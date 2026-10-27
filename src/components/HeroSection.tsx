@@ -1,10 +1,44 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
+import { Lock, LockOpen } from 'lucide-react';
 import LorenzoInteractivePortrait from './LorenzoInteractivePortrait';
 
 export const HeroSection: React.FC = () => {
+  const [locked, setLocked] = useState(false);
+
+  // While locked (mobile), swiping on the hero plays with the portrait instead of scrolling the page
+  useEffect(() => {
+    if (!locked) return;
+    const html = document.documentElement;
+    const prevHtml = html.style.overflow;
+    const prevBody = document.body.style.overflow;
+    html.style.overflow = 'hidden';
+    document.body.style.overflow = 'hidden';
+    // tell the smooth-scroller to scroll to the hero and freeze (it ignores overflow:hidden)
+    window.dispatchEvent(new CustomEvent('hero-lock', { detail: true }));
+    // block wheel / touch scrolling everywhere while locked (except inside modals)
+    const block = (e: Event) => {
+      if ((e.target as HTMLElement | null)?.closest?.('[data-lenis-prevent]')) return;
+      e.preventDefault();
+    };
+    const opts = { passive: false } as AddEventListenerOptions;
+    window.addEventListener('wheel', block, opts);
+    window.addEventListener('touchmove', block, opts);
+    const keys = (e: KeyboardEvent) => {
+      if ([' ', 'PageDown', 'PageUp', 'ArrowDown', 'ArrowUp', 'End', 'Home'].includes(e.key)) e.preventDefault();
+    };
+    window.addEventListener('keydown', keys);
+    return () => {
+      window.dispatchEvent(new CustomEvent('hero-lock', { detail: false }));
+      window.removeEventListener('wheel', block);
+      window.removeEventListener('touchmove', block);
+      window.removeEventListener('keydown', keys);
+      html.style.overflow = prevHtml;
+      document.body.style.overflow = prevBody;
+    };
+  }, [locked]);
+
   return (
-    <section className="hero-stage">
-      {/* ── NAVBAR (ONLY NAME ON THE LEFT) ── */}
+    <section className={`hero-stage ${locked ? 'is-locked' : ''}`}>      {/* ── NAVBAR (ONLY NAME ON THE LEFT) ── */}
       <nav className="minimal-navbar">
         <a href="#top" className="navbar-name">
           YASH
@@ -79,6 +113,17 @@ export const HeroSection: React.FC = () => {
           </div>
         </div>
       </div>
+      {/* Mobile-only lock toggle: freezes page scroll so touches drive the portrait */}
+      <button
+        type="button"
+        className={`hero-lock-btn ${locked ? 'is-locked' : ''}`}
+        onClick={() => setLocked((v) => !v)}
+        aria-pressed={locked}
+        aria-label={locked ? 'Unlock scrolling' : 'Lock hero to interact'}
+      >
+        {locked ? <Lock size={15} /> : <LockOpen size={15} />}
+        <span>{locked ? 'LOCKED · DRAG TO PLAY' : 'LOCK TO PLAY'}</span>
+      </button>
     </section>
   );
 };

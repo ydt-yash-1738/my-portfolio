@@ -320,6 +320,17 @@ export const BioSection: React.FC = () => {
 
     const lenis = reduce ? null : new Lenis({ lerp: 0.085, smoothWheel: true });
     lenis?.on('scroll', ScrollTrigger.update);
+    // hero lock (mobile): scroll to the hero, then freeze Lenis so the page can't move
+    const onHeroLock = (e: Event) => {
+      const locked = (e as CustomEvent<boolean>).detail;
+      if (!lenis) {
+        if (locked) window.scrollTo({ top: 0, behavior: 'smooth' });
+        return;
+      }
+      if (locked) lenis.scrollTo(0, { duration: 0.6, lock: true, onComplete: () => lenis.stop() });
+      else lenis.start();
+    };
+    window.addEventListener('hero-lock', onHeroLock);
     const rafTick = (t: number) => lenis?.raf(t * 1000);
     gsap.ticker.add(rafTick);
     gsap.ticker.lagSmoothing(0);
@@ -456,6 +467,7 @@ export const BioSection: React.FC = () => {
       window.removeEventListener('resize', fitCta);
       ctx.revert();
       gsap.ticker.remove(rafTick);
+      window.removeEventListener('hero-lock', onHeroLock);
       lenis?.destroy();
     };
   }, []);
@@ -503,14 +515,17 @@ export const BioSection: React.FC = () => {
             <div className="bio-narrative-col">
               <h2 className="bio-headline reveal-on-scroll" aria-label="Full-Stack Engineer & Freelance Developer building high-velocity web platforms and cloud-native backends.">
                 {HEADLINE.map((h, i) => (
-                  <span key={i} className="word-mask" aria-hidden="true">
-                    <span
-                      className={`word ${h.accent ? 'accent-red' : ''}`}
-                      style={{ transitionDelay: `${i * 55}ms` }}
-                    >
-                      {h.w}
-                    </span>{' '}
-                  </span>
+                  <React.Fragment key={i}>
+                    <span className="word-mask" aria-hidden="true">
+                      <span
+                        className={`word ${h.accent ? 'accent-red' : ''}`}
+                        style={{ transitionDelay: `${i * 55}ms` }}
+                      >
+                        {h.w}
+                      </span>
+                    </span>
+                    {i < HEADLINE.length - 1 ? ' ' : null}
+                  </React.Fragment>
                 ))}
               </h2>
 

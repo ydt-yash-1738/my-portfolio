@@ -1537,3 +1537,38 @@ body { overscroll-behavior-y: none; }
 .loader-bottom { display: flex; justify-content: space-between; gap: 12px; margin-top: 14px; font-family: var(--font-mono); font-size: 10px; font-weight: 700; letter-spacing: 0.16em; color: rgba(255, 255, 255, 0.45); }
 @media (max-width: 480px) { .loader-bottom span:last-child { display: none; } }
 @media (prefers-reduced-motion: reduce) { .site-loader { transition: opacity 0.3s ease; } .site-loader.is-leaving { transform: none; opacity: 0; } }
+
+/* ═══════════════════════════════════════════════════════════
+   13. HERO LOCK (mobile / touch)
+   ═══════════════════════════════════════════════════════════ */
+.hero-lock-btn { display: none; }
+@media (hover: none), (max-width: 768px) {
+  .hero-lock-btn {
+    position: absolute;
+    left: 20px;
+    bottom: max(26px, calc(env(safe-area-inset-bottom) + 14px));
+    z-index: 8;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 14px;
+    border-radius: 999px;
+    border: 1.5px solid #141416;
+    background: rgba(255, 255, 255, 0.85);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+    color: #141416;
+    font-family: var(--font-mono);
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    cursor: pointer;
+    transition: background-color 0.25s ease, color 0.25s ease, transform 0.2s ease;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .hero-lock-btn:active { transform: scale(0.96); }
+  .hero-lock-btn.is-locked { background: var(--accent-red); border-color: var(--accent-red); color: #fff; }
+  .hero-stage.is-locked,
+  .hero-stage.is-locked .hero-canvas-layer { touch-action: none; }
+  .hero-stage.is-locked .scroll-cue-text { opacity: 0.35; }
+}
