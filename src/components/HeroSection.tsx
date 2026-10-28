@@ -38,7 +38,8 @@ export const HeroSection: React.FC = () => {
   }, [locked]);
 
   return (
-    <section className={`hero-stage ${locked ? 'is-locked' : ''}`}>      {/* ── NAVBAR (ONLY NAME ON THE LEFT) ── */}
+    <section className={`hero-stage ${locked ? 'is-locked' : ''}`}>
+      {/* ── NAVBAR (ONLY NAME ON THE LEFT) ── */}
       <nav className="minimal-navbar">
         <a href="#top" className="navbar-name">
           YASH
@@ -113,6 +114,7 @@ export const HeroSection: React.FC = () => {
           </div>
         </div>
       </div>
+
       {/* Mobile-only lock toggle: freezes page scroll so touches drive the portrait */}
       <button
         type="button"

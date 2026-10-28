@@ -22,6 +22,46 @@ function parseVec3(vec3String: string): [number, number, number] {
   return [1, 1, 1];
 }
 
+// ══════════════════════════════════════════════════════════════════
+// AUTOMATIC TEASER SWIPES CONFIGURATION
+// You can adjust the radius, coordinates, or add new swipe paths below.
+// Coordinate space is normalized screen space (-1.0 to +1.0):
+//   X: -1.0 (far left) to +1.0 (far right) | Portrait head is ~ -0.42 to +0.40
+//   Y: -1.0 (bottom) to +1.0 (top)        | Face / helmet is ~ -0.05 to +0.45
+// ══════════════════════════════════════════════════════════════════
+const TEASER_BLOB_RADIUS = 0.045; // Glimpse thickness (smaller = thinner slit, default was 0.07)
+
+interface SwipeTrajectory {
+  startX: number;
+  startY: number;
+  endX: number;
+  endY: number;
+}
+
+interface SwipePairConfig {
+  name: string;
+  swipe1: SwipeTrajectory;
+  swipe2: SwipeTrajectory;
+}
+
+const TEASER_SWIPE_PAIRS: SwipePairConfig[] = [
+  {
+    name: 'Upper Visor & Helmet Crown',
+    swipe1: { startX: -0.42, startY: 0.32, endX: 0.38, endY: 0.24 }, // Long horizontal cut across the visor
+    swipe2: { startX: 0.36, startY: 0.44, endX: -0.36, endY: 0.20 }, // Long diagonal cut across helmet crown
+  },
+  {
+    name: 'Mid-Face & Cheek Red Graphics',
+    swipe1: { startX: -0.40, startY: 0.12, endX: 0.40, endY: 0.06 }, // Long sweep across cheek & red graphics
+    swipe2: { startX: -0.34, startY: -0.04, endX: 0.36, endY: 0.18 }, // Diagonal cut up through chin and visor
+  },
+  {
+    name: 'Full Diagonal Slash',
+    swipe1: { startX: -0.38, startY: 0.40, endX: 0.38, endY: -0.02 }, // Top-left to bottom-right full slash
+    swipe2: { startX: 0.38, startY: 0.32, endX: -0.38, endY: 0.08 }, // Top-right to bottom-left full slash
+  },
+];
+
 export const LorenzoInteractivePortrait: React.FC<LorenzoInteractivePortraitProps> = ({
   baseImageUrl = '/portrait-base-cutout.png',
   revealImageUrl = '/marquez-reveal-4k.png',
@@ -68,18 +108,18 @@ export const LorenzoInteractivePortrait: React.FC<LorenzoInteractivePortraitProp
         aspect: { value: width / height },
       };
 
+      // ── PERSPECTIVE CAMERA ──
+      // Calibrated so at z = 0, exactly 1 unit = 1 pixel
+      const fov = 45;
+      const fovRad = (fov * Math.PI) / 180;
+      let cameraZ = (height / 2) / Math.tan(fovRad / 2);
+
       const scene = new THREE.Scene();
       scene.background = new THREE.Color(backgroundColor);
 
-      const camera = new THREE.OrthographicCamera(
-        width / -2,
-        width / 2,
-        height / 2,
-        height / -2,
-        0.1,
-        1000
-      );
-      camera.position.z = 1;
+      const camera = new THREE.PerspectiveCamera(fov, width / height, 1, 10000);
+      camera.position.set(0, 0, cameraZ);
+      camera.lookAt(0, 0, 0);
 
       const renderer = new THREE.WebGLRenderer({
         antialias: true,
@@ -94,6 +134,73 @@ export const LorenzoInteractivePortrait: React.FC<LorenzoInteractivePortraitProp
       const timerId = setTimeout(() => {
         setIsReady(true);
       }, fadeInDelay * 1000);
+
+      // ── SUBTLE 3D TILT STATE FOR THE PORTRAIT ──
+      const MAX_TILT_Y = (3.2 * Math.PI) / 180; // ~3.2 deg left-right rotation
+      const MAX_TILT_X = (1.6 * Math.PI) / 180; // ~1.6 deg vertical pitch
+      const LERP = 0.08;
+
+      let currentTiltX = 0;
+      let currentTiltY = 0;
+      let mouseTargetX = 0;
+      let mouseTargetY = 0;
+      let touchTargetX = 0;
+      let touchTargetY = 0;
+      let isTouching = false;
+      let gyroTargetX = 0;
+      let gyroTargetY = 0;
+      let hasGyro = false;
+
+      // Track manual user interaction for automatic hint swipes
+      let isUserInteracting = false;
+      let lastInteractionTime = performance.now();
+
+      const handleOrientation = (e: DeviceOrientationEvent) => {
+        if (e.gamma === null || e.beta === null) return;
+        hasGyro = true;
+
+        let gamma = e.gamma;
+        let beta = e.beta;
+
+        const orientationAngle =
+          window.screen?.orientation?.angle ??
+          (typeof window.orientation === 'number' ? window.orientation : 0);
+
+        if (orientationAngle === 90) {
+          const tmp = gamma;
+          gamma = -beta;
+          beta = tmp;
+        } else if (orientationAngle === -90 || orientationAngle === 270) {
+          const tmp = gamma;
+          gamma = beta;
+          beta = -tmp;
+        }
+
+        const normGamma = Math.max(-1, Math.min(1, gamma / 25));
+        const normBeta = Math.max(-1, Math.min(1, (beta - 48) / 25));
+
+        gyroTargetY = normGamma * MAX_TILT_Y;
+        gyroTargetX = -normBeta * MAX_TILT_X;
+      };
+
+      const requestGyroPermission = async () => {
+        if (
+          typeof DeviceOrientationEvent !== 'undefined' &&
+          typeof (DeviceOrientationEvent as unknown as { requestPermission?: () => Promise<string> })
+            .requestPermission === 'function'
+        ) {
+          try {
+            const res = await (
+              DeviceOrientationEvent as unknown as { requestPermission: () => Promise<string> }
+            ).requestPermission();
+            if (res === 'granted') {
+              window.addEventListener('deviceorientation', handleOrientation, { passive: true });
+            }
+          } catch {
+            // ignore
+          }
+        }
+      };
 
       class Blob {
         renderer: THREE.WebGLRenderer;
@@ -141,41 +248,90 @@ export const LorenzoInteractivePortrait: React.FC<LorenzoInteractivePortraitProp
             const rect = container!.getBoundingClientRect();
             if (event.clientY < rect.top || event.clientY > rect.bottom) {
               this.uniforms.pointer.value.set(10, 10);
+              mouseTargetX = 0;
+              mouseTargetY = 0;
+              isUserInteracting = false;
+              lastInteractionTime = performance.now();
               return;
             }
+            isUserInteracting = true;
+            lastInteractionTime = performance.now();
+            this.uniforms.pointerRadius.value = blobRadius;
+
             const curW = container!.clientWidth || w;
             const curH = container!.clientHeight || h;
-            this.uniforms.pointer.value.x = ((event.clientX - rect.left) / curW) * 2 - 1;
-            this.uniforms.pointer.value.y = -((event.clientY - rect.top) / curH) * 2 + 1;
+            const normX = ((event.clientX - rect.left) / curW) * 2 - 1;
+            const normY = -((event.clientY - rect.top) / curH) * 2 + 1;
+            this.uniforms.pointer.value.x = normX;
+            this.uniforms.pointer.value.y = normY;
+
+            mouseTargetY = Math.max(-1, Math.min(1, normX)) * MAX_TILT_Y;
+            mouseTargetX = Math.max(-1, Math.min(1, -normY)) * MAX_TILT_X;
           };
 
           const handleTouchMove = (event: TouchEvent) => {
             if (event.touches.length > 0) {
+              isUserInteracting = true;
+              lastInteractionTime = performance.now();
+              this.uniforms.pointerRadius.value = blobRadius;
+
               const rect = container!.getBoundingClientRect();
               const curW = container!.clientWidth || w;
               const curH = container!.clientHeight || h;
               const touch = event.touches[0];
-              this.uniforms.pointer.value.x = ((touch.clientX - rect.left) / curW) * 2 - 1;
-              this.uniforms.pointer.value.y = -((touch.clientY - rect.top) / curH) * 2 + 1;
+              const normX = ((touch.clientX - rect.left) / curW) * 2 - 1;
+              const normY = -((touch.clientY - rect.top) / curH) * 2 + 1;
+              this.uniforms.pointer.value.x = normX;
+              this.uniforms.pointer.value.y = normY;
+
+              touchTargetY = Math.max(-1, Math.min(1, normX)) * MAX_TILT_Y;
+              touchTargetX = Math.max(-1, Math.min(1, -normY)) * MAX_TILT_X;
             }
           };
 
+          const handleTouchStart = (event: TouchEvent) => {
+            isTouching = true;
+            isUserInteracting = true;
+            lastInteractionTime = performance.now();
+            this.uniforms.pointerRadius.value = blobRadius;
+            handleTouchMove(event);
+            requestGyroPermission();
+          };
+
           const handleMouseLeave = () => {
+            this.uniforms.pointer.value.set(10, 10);
+            mouseTargetX = 0;
+            mouseTargetY = 0;
+            isUserInteracting = false;
+            lastInteractionTime = performance.now();
+          };
+
+          const handleTouchEnd = () => {
+            isTouching = false;
+            isUserInteracting = false;
+            lastInteractionTime = performance.now();
             this.uniforms.pointer.value.set(10, 10);
           };
 
           window.addEventListener('mousemove', handleMouseMove, { passive: true });
           container!.addEventListener('touchmove', handleTouchMove, { passive: true });
-      container!.addEventListener('touchstart', handleTouchMove, { passive: true });
+          container!.addEventListener('touchstart', handleTouchStart, { passive: true });
           document.addEventListener('mouseleave', handleMouseLeave);
-          container!.addEventListener('touchend', handleMouseLeave);
+          container!.addEventListener('touchend', handleTouchEnd);
+          container!.addEventListener('touchcancel', handleTouchEnd);
+
+          if (typeof window !== 'undefined' && 'DeviceOrientationEvent' in window) {
+            window.addEventListener('deviceorientation', handleOrientation, { passive: true });
+          }
 
           this.removeListeners = () => {
             window.removeEventListener('mousemove', handleMouseMove);
             container!.removeEventListener('touchmove', handleTouchMove);
-      container!.removeEventListener('touchstart', handleTouchMove);
+            container!.removeEventListener('touchstart', handleTouchStart);
             document.removeEventListener('mouseleave', handleMouseLeave);
-            container!.removeEventListener('touchend', handleMouseLeave);
+            container!.removeEventListener('touchend', handleTouchEnd);
+            container!.removeEventListener('touchcancel', handleTouchEnd);
+            window.removeEventListener('deviceorientation', handleOrientation);
           };
 
           const blobMaterial = new THREE.ShaderMaterial({
@@ -276,21 +432,36 @@ export const LorenzoInteractivePortrait: React.FC<LorenzoInteractivePortraitProp
       let helmetImage: THREE.Mesh;
       let bgPlane: THREE.Mesh;
 
+      // ── PORTRAIT GROUP (ONLY THIS TILTS IN 3D) ──
+      const portraitGroup = new THREE.Group();
+      portraitGroup.renderOrder = 2;
+      scene.add(portraitGroup);
+
       const updatePortraitGeometry = (img: HTMLImageElement, viewW: number, viewH: number) => {
-        const scale = Math.min(viewW / img.width, viewH / img.height);
+        // Zoom in slightly (~7%) and bleed the bottom below viewport so 3D tilt never exposes a bottom gap
+        const baseScale = Math.min(viewW / img.width, viewH / img.height);
+        const zoomFactor = 1.07;
+        const scale = baseScale * zoomFactor;
+
         const planeWidth = img.width * scale;
         const planeHeight = img.height * scale;
-        const posY = -(viewH / 2) + planeHeight / 2;
+
+        // Bleed bottom edge ~36px below floor so perspective tilt corners stay hidden below the fold
+        const bleedBottom = Math.max(36, viewH * 0.045);
+        const posY = -(viewH / 2) + planeHeight / 2 - bleedBottom;
+
+        // Visual pivot at portrait center
+        portraitGroup.position.set(0, posY, 0);
 
         if (baseImage) {
           baseImage.geometry.dispose();
           baseImage.geometry = new THREE.PlaneGeometry(planeWidth, planeHeight);
-          baseImage.position.set(0, posY, 0);
+          baseImage.position.set(0, 0, 0);
         }
         if (helmetImage) {
           helmetImage.geometry.dispose();
           helmetImage.geometry = new THREE.PlaneGeometry(planeWidth, planeHeight);
-          helmetImage.position.set(0, posY, 0.1);
+          helmetImage.position.set(0, 0, 1.0);
         }
       };
 
@@ -317,7 +488,8 @@ export const LorenzoInteractivePortrait: React.FC<LorenzoInteractivePortraitProp
         }
       });
 
-      // Layer -0.05: Slow-moving ambient topographic contour lines across the entire hero background
+      // Layer 0: Slow-moving ambient topographic contour lines across the background
+      // Sits at z = -50 with depthWrite: false and depthTest: false so it NEVER occludes the portrait!
       const ambientBgMaterial = new THREE.ShaderMaterial({
         uniforms: {
           time: gu.time,
@@ -387,22 +559,16 @@ export const LorenzoInteractivePortrait: React.FC<LorenzoInteractivePortraitProp
             gl_FragColor = vec4(finalColor, 1.0);
           }
         `,
+        depthWrite: false,
+        depthTest: false,
       });
 
-      ambientBgPlane = new THREE.Mesh(new THREE.PlaneGeometry(width, height), ambientBgMaterial);
-      ambientBgPlane.position.z = -0.05;
+      ambientBgPlane = new THREE.Mesh(new THREE.PlaneGeometry(width * 1.5, height * 1.5), ambientBgMaterial);
+      ambientBgPlane.position.set(0, 0, -50);
+      ambientBgPlane.renderOrder = 0;
       scene.add(ambientBgPlane);
 
-      // Layer 0: Base portrait (RGBA cutout, so ambient moving contours flow cleanly behind head & shoulders)
-      const baseImageMaterial = new THREE.MeshBasicMaterial({
-        map: baseTexture,
-        transparent: true,
-      });
-      baseImage = new THREE.Mesh(new THREE.PlaneGeometry(width, height), baseImageMaterial);
-      baseImage.position.z = 0;
-      scene.add(baseImage);
-
-      // Layer 0.05: Hover blob contour plane
+      // Layer 1: Hover blob contour plane on the background (behind portrait, depthWrite: false)
       const bgPlaneMaterial = new THREE.ShaderMaterial({
         uniforms: {
           texBlob: { value: blob.rtOutput.texture },
@@ -479,13 +645,27 @@ export const LorenzoInteractivePortrait: React.FC<LorenzoInteractivePortraitProp
           }
         `,
         transparent: true,
+        depthWrite: false,
+        depthTest: false,
       });
 
-      bgPlane = new THREE.Mesh(new THREE.PlaneGeometry(width, height), bgPlaneMaterial);
-      bgPlane.position.z = 0.05;
+      bgPlane = new THREE.Mesh(new THREE.PlaneGeometry(width * 1.5, height * 1.5), bgPlaneMaterial);
+      bgPlane.position.set(0, 0, -10);
+      bgPlane.renderOrder = 1;
       scene.add(bgPlane);
 
-      // Layer 0.1: Reveal image (Marc Márquez Shoei helmet)
+      // Layer 2: Base portrait inside portraitGroup
+      const baseImageMaterial = new THREE.MeshBasicMaterial({
+        map: baseTexture,
+        transparent: true,
+        depthWrite: false,
+      });
+      baseImage = new THREE.Mesh(new THREE.PlaneGeometry(width, height), baseImageMaterial);
+      baseImage.position.set(0, 0, 0);
+      baseImage.renderOrder = 2;
+      portraitGroup.add(baseImage);
+
+      // Layer 3: Reveal image (Shoei helmet) inside portraitGroup
       const helmetImageMaterial = new THREE.ShaderMaterial({
         uniforms: {
           texBlob: { value: blob.rtOutput.texture },
@@ -518,11 +698,13 @@ export const LorenzoInteractivePortrait: React.FC<LorenzoInteractivePortraitProp
           }
         `,
         transparent: true,
+        depthWrite: false,
       });
 
       helmetImage = new THREE.Mesh(new THREE.PlaneGeometry(width, height), helmetImageMaterial);
-      helmetImage.position.z = 0.1;
-      scene.add(helmetImage);
+      helmetImage.position.set(0, 0, 1.0);
+      helmetImage.renderOrder = 3;
+      portraitGroup.add(helmetImage);
 
       const clock = new THREE.Clock();
       let animationId: number;
@@ -534,6 +716,72 @@ export const LorenzoInteractivePortrait: React.FC<LorenzoInteractivePortraitProp
 
         bgPlaneMaterial.uniforms.texBlob.value = blob.rtOutput.texture;
         helmetImageMaterial.uniforms.texBlob.value = blob.rtOutput.texture;
+
+        // Smoothly interpolate portrait 3D tilt
+        let targetX = 0;
+        let targetY = 0;
+        if (isTouching) {
+          targetX = touchTargetX;
+          targetY = touchTargetY;
+        } else if (hasGyro) {
+          targetX = gyroTargetX;
+          targetY = gyroTargetY;
+        } else {
+          targetX = mouseTargetX;
+          targetY = mouseTargetY;
+        }
+
+        currentTiltX += (targetX - currentTiltX) * LERP;
+        currentTiltY += (targetY - currentTiltY) * LERP;
+
+        portraitGroup.rotation.y = currentTiltY;
+        portraitGroup.rotation.x = currentTiltX;
+
+        // ── AUTOMATIC TEASER SWIPES EVERY ~3 SECONDS WHEN USER IS IDLE ──
+        const now = performance.now();
+        const timeSinceInteraction = now - lastInteractionTime;
+
+        if (!isUserInteracting && timeSinceInteraction > 1400) {
+          const cycleTime = 3.2; // 3.2s total cycle (~3s recurring)
+          const idleSec = (timeSinceInteraction - 1400) / 1000;
+          const cycleIndex = Math.floor(idleSec / cycleTime) % TEASER_SWIPE_PAIRS.length;
+          const currentPair = TEASER_SWIPE_PAIRS[cycleIndex];
+          const cycleT = idleSec % cycleTime;
+
+          // Swipe 1: 0.0s to 0.50s (first long swipe across portrait)
+          if (cycleT < 0.50) {
+            const p = cycleT / 0.50;
+            const easeP = p * p * (3 - 2 * p);
+            const { startX, startY, endX, endY } = currentPair.swipe1;
+
+            blob.uniforms.pointerRadius.value = TEASER_BLOB_RADIUS;
+            blob.uniforms.pointer.value.set(
+              startX + (endX - startX) * easeP,
+              startY + (endY - startY) * easeP
+            );
+          }
+          // Pause between swipes: 0.50s to 0.75s
+          else if (cycleT < 0.75) {
+            blob.uniforms.pointer.value.set(10, 10);
+          }
+          // Swipe 2: 0.75s to 1.25s (second long swipe across portrait)
+          else if (cycleT < 1.25) {
+            const p = (cycleT - 0.75) / 0.50;
+            const easeP = p * p * (3 - 2 * p);
+            const { startX, startY, endX, endY } = currentPair.swipe2;
+
+            blob.uniforms.pointerRadius.value = TEASER_BLOB_RADIUS;
+            blob.uniforms.pointer.value.set(
+              startX + (endX - startX) * easeP,
+              startY + (endY - startY) * easeP
+            );
+          }
+          // Rest period: 1.25s to 3.2s (~2 seconds pause before next pair)
+          else {
+            blob.uniforms.pointer.value.set(10, 10);
+            blob.uniforms.pointerRadius.value = blobRadius;
+          }
+        }
 
         blob.render();
         renderer.render(scene, camera);
@@ -548,10 +796,9 @@ export const LorenzoInteractivePortrait: React.FC<LorenzoInteractivePortraitProp
         const newHeight = container.clientHeight;
         if (newWidth === 0 || newHeight === 0) return;
 
-        camera.left = newWidth / -2;
-        camera.right = newWidth / 2;
-        camera.top = newHeight / 2;
-        camera.bottom = newHeight / -2;
+        camera.aspect = newWidth / newHeight;
+        cameraZ = (newHeight / 2) / Math.tan(fovRad / 2);
+        camera.position.z = cameraZ;
         camera.updateProjectionMatrix();
 
         renderer.setSize(newWidth, newHeight);
@@ -559,10 +806,10 @@ export const LorenzoInteractivePortrait: React.FC<LorenzoInteractivePortraitProp
         gu.aspect.value = newWidth / newHeight;
 
         ambientBgPlane.geometry.dispose();
-        ambientBgPlane.geometry = new THREE.PlaneGeometry(newWidth, newHeight);
+        ambientBgPlane.geometry = new THREE.PlaneGeometry(newWidth * 1.5, newHeight * 1.5);
 
         bgPlane.geometry.dispose();
-        bgPlane.geometry = new THREE.PlaneGeometry(newWidth, newHeight);
+        bgPlane.geometry = new THREE.PlaneGeometry(newWidth * 1.5, newHeight * 1.5);
 
         const img = baseTexture.image || helmetTexture.image;
         if (img) {
