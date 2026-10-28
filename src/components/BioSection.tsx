@@ -134,6 +134,7 @@ const FLOWS: string[][] = [
 
 /** Animated browser mockup + request/response flow diagram, built purely from CSS + a tiny ticker. */
 const PREVIEW_W = 1280; // desktop viewport width the live site is rendered at, then scaled down
+const PREVIEW_MOBILE_W = 420; // mobile viewport width to prevent GPU overload and layout breaks on phones
 
 const BrowserFlow: React.FC<{ domain: string; nodes: string[]; isLive: boolean; seed: number; previewUrl?: string }> = ({
   domain,
@@ -146,31 +147,78 @@ const BrowserFlow: React.FC<{ domain: string; nodes: string[]; isLive: boolean; 
   const [scale, setScale] = useState(0.3);
   const [box, setBox] = useState({ w: 0, h: 0 });
   const [loaded, setLoaded] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
+  const rootRef = useRef<HTMLDivElement>(null);
+  const [inView, setInView] = useState(false);
 
-  // scale the 1280px-wide site to whatever width the mockup has
+  // run the CSS animations / ticker only while the mockup is on screen (big battery + FPS win on phones)
+  useEffect(() => {
+    const el = rootRef.current;
+    if (!el) return;
+    const io = new IntersectionObserver(([entry]) => setInView(entry.isIntersecting), { rootMargin: '80px' });
+    io.observe(el);
+    return () => io.disconnect();
+  }, []);
+
+  // scale calculation: responsive for mobile vs desktop so mobile phones render at native 420px width without GPU lag
   useEffect(() => {
     const el = screenRef.current;
     if (!el || !previewUrl) return;
-    const ro = new ResizeObserver(() => {
-      setScale(el.clientWidth / PREVIEW_W);
-      setBox({ w: el.clientWidth, h: el.clientHeight });
-    });
+
+    const measure = () => {
+      const clientW = el.clientWidth;
+      const clientH = el.clientHeight;
+      const mobile = window.innerWidth < 768 || clientW < 520;
+      setIsMobile(mobile);
+      setBox({ w: clientW, h: clientH });
+
+      if (mobile) {
+        const baseW = Math.min(clientW || PREVIEW_MOBILE_W, PREVIEW_MOBILE_W);
+        setScale(clientW > 0 && baseW > 0 ? clientW / baseW : 1);
+      } else {
+        setScale(clientW > 0 ? clientW / PREVIEW_W : 0.3);
+      }
+    };
+
+    measure();
+    const ro = new ResizeObserver(measure);
     ro.observe(el);
-    return () => ro.disconnect();
+    window.addEventListener('resize', measure);
+    return () => {
+      ro.disconnect();
+      window.removeEventListener('resize', measure);
+    };
   }, [previewUrl]);
+
+  // Fallback safety timeout so an unresponsive external site won't keep the card loader indefinitely
+  useEffect(() => {
+    if (!previewUrl || loaded) return;
+    const timer = window.setTimeout(() => {
+      setLoaded(true);
+    }, 8000);
+    return () => window.clearTimeout(timer);
+  }, [previewUrl, loaded]);
+
   const [metric, setMetric] = useState(isLive ? 110 + seed * 19 : 0);
   useEffect(() => {
+    if (!inView) return; // Save CPU when off-screen
     const id = window.setInterval(
       () => setMetric((m) => (isLive ? 80 + Math.floor(Math.random() * 90) : m >= 100 ? 0 : m + 4)),
       isLive ? 1800 : 140
     );
     return () => window.clearInterval(id);
-  }, [isLive]);
+  }, [isLive, inView]);
 
   const url = isLive ? `https://${domain}` : 'localhost:3000/build';
   const n = nodes.length;
+
+  const targetWidth = isMobile ? Math.min(box.w || PREVIEW_MOBILE_W, PREVIEW_MOBILE_W) : PREVIEW_W;
+  const targetHeight = isMobile
+    ? (box.h > 0 ? box.h / Math.max(0.1, scale) : 320)
+    : (scale > 0 ? box.h / scale : 800);
+
   return (
-    <div className={`bf ${isLive ? 'is-live' : 'is-wip'}`} aria-hidden="true">
+    <div ref={rootRef} className={`bf ${isLive ? 'is-live' : 'is-wip'} ${inView ? 'is-inview' : ''}`} aria-hidden="true">
       <div className="bf-chrome">
         <i /><i /><i />
         <span className="bf-url-wrap">
@@ -183,22 +231,48 @@ const BrowserFlow: React.FC<{ domain: string; nodes: string[]; isLive: boolean; 
         <div className="sk sk-hero"><span className="sk-line w70" /><span className="sk-line w45" /><span className="sk-btn" /></div>
         <div className="sk-row"><div className="sk sk-card" /><div className="sk sk-card" /><div className="sk sk-card" /></div>
         <span className="bf-cursor" />
+
         {previewUrl && (
-          <iframe
-            className={`bf-iframe ${loaded ? 'is-loaded' : ''}`}
-            src={previewUrl}
-            title={`Live preview of ${domain}`}
-            loading="lazy"
-            tabIndex={-1}
-            sandbox="allow-scripts allow-same-origin"
-            referrerPolicy="no-referrer"
-            onLoad={() => setLoaded(true)}
-            style={{
-              width: PREVIEW_W,
-              height: scale > 0 ? box.h / scale : 800,
-              transform: `scale(${scale})`,
-            }}
-          />
+          <>
+            <div className="bf-iframe-clipper">
+              <iframe
+                className={`bf-iframe ${loaded ? 'is-loaded' : ''}`}
+                src={previewUrl}
+                title={`Live preview of ${domain}`}
+                tabIndex={-1}
+                loading="eager"
+                sandbox="allow-scripts allow-same-origin"
+                referrerPolicy="no-referrer"
+                onLoad={(e) => {
+                  e.currentTarget.dataset.loaded = '1'; // the loading screen waits for this
+                  setLoaded(true);
+                }}
+                onError={(e) => {
+                  e.currentTarget.dataset.loaded = '1';
+                  setLoaded(true);
+                }}
+                style={{
+                  width: targetWidth,
+                  height: targetHeight,
+                  transform: `scale(${scale})`,
+                }}
+              />
+            </div>
+
+            {/* Card Loader Overlay: stays visible until iframe is loaded */}
+            <div className={`bf-card-loader ${loaded ? 'is-loaded' : ''}`} aria-hidden={loaded}>
+              <div className="bf-card-loader-body">
+                <span className="bf-loader-spin" />
+                <div className="bf-loader-meta">
+                  <span className="bf-loader-title">LOADING PREVIEW</span>
+                  <span className="bf-loader-domain">{domain}</span>
+                </div>
+              </div>
+              <div className="bf-loader-bar-track">
+                <span className="bf-loader-bar-fill" />
+              </div>
+            </div>
+          </>
         )}
       </div>
       <div className="bf-flow" style={{ '--n': n } as React.CSSProperties}>

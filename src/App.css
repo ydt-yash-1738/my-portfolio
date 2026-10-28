@@ -1960,14 +1960,31 @@ body { overscroll-behavior-y: none; }
 
 /* tablet / mobile: single column, no sticky deck */
 @media (max-width: 960px) {
+  .projects-block,
+  .projects-list,
+  .project-item {
+    max-width: 100%;
+    overflow: hidden;
+  }
   .project-deck-card {
     grid-template-columns: 1fr;
     grid-template-areas: 'left' 'desc' 'visual' 'right';
     padding: 22px 18px;
     row-gap: 16px;
+    max-width: 100%;
+    overflow: hidden;
   }
   .project-item { margin-bottom: 18px; }
-  .deck-visual .bf { min-height: 270px; transform: none; }
+  .deck-visual {
+    max-width: 100%;
+    overflow: hidden;
+  }
+  .deck-visual .bf {
+    min-height: 270px;
+    transform: none !important;
+    max-width: 100%;
+    overflow: hidden;
+  }
   .bf-node em { font-size: 7.5px; letter-spacing: 0.04em; }
 }
 @media (hover: none) { .project-row-card .bf-flow { --cycle: 3.2s; } .project-row-card:active .bf-flow { --cycle: 1.5s; } }
@@ -1978,21 +1995,158 @@ body { overscroll-behavior-y: none; }
   .bf-cursor { transform: translate(60%, 62%); }
 }
 
-/* ── Live site preview inside the browser (iframe scaled from a 1280px viewport) ── */
-.bf-screen.has-preview { min-height: 230px; padding: 0; }
+/* ── Live site preview inside the browser ── */
+.bf-screen.has-preview {
+  position: relative;
+  min-height: 230px;
+  padding: 0;
+  overflow: hidden;
+  contain: strict;
+  width: 100%;
+  max-width: 100%;
+}
+
+.bf-iframe-clipper {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  contain: strict;
+  pointer-events: none;
+  touch-action: pan-y;
+  background: #0a0b10;
+  z-index: 3;
+}
+
 .bf-iframe {
   position: absolute;
   left: 0;
   top: 0;
-  z-index: 3;
   border: 0;
-  background: #fff;
+  background: #0a0b10;
   transform-origin: 0 0;
   pointer-events: none; /* clicks fall through to the card link */
   opacity: 0;
-  transition: opacity 0.6s ease;
+  transition: opacity 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+  max-width: none !important;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  will-change: opacity;
 }
-.bf-iframe.is-loaded { opacity: 1; }
+
+.bf-iframe.is-loaded {
+  opacity: 1;
+}
+
+/* Card loader overlay: stays until iframe is loaded */
+.bf-card-loader {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: 12px;
+  background: rgba(10, 11, 16, 0.88);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  pointer-events: none;
+  opacity: 1;
+  transition: opacity 0.5s ease-out, visibility 0.5s;
+}
+
+.bf-card-loader.is-loaded {
+  opacity: 0;
+  visibility: hidden;
+}
+
+.bf-card-loader-body {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 14px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.4);
+}
+
+.bf-loader-spin {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: 2px solid rgba(229, 27, 36, 0.25);
+  border-top-color: var(--accent-red, #e51b24);
+  animation: bfSpin 0.8s linear infinite;
+}
+
+@keyframes bfSpin {
+  to { transform: rotate(360deg); }
+}
+
+.bf-loader-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.bf-loader-title {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  color: #fff;
+}
+
+.bf-loader-domain {
+  font-family: var(--font-mono);
+  font-size: 8px;
+  color: rgba(255, 255, 255, 0.5);
+  letter-spacing: 0.04em;
+}
+
+.bf-loader-bar-track {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  right: 0;
+  height: 2px;
+  background: rgba(255, 255, 255, 0.06);
+  overflow: hidden;
+}
+
+.bf-loader-bar-fill {
+  display: block;
+  height: 100%;
+  width: 50%;
+  background: var(--accent-red, #e51b24);
+  box-shadow: 0 0 8px var(--accent-red, #e51b24);
+  animation: bfLoaderBar 1.8s ease-in-out infinite;
+}
+
+@keyframes bfLoaderBar {
+  0% { transform: translateX(-100%); }
+  50% { transform: translateX(100%); }
+  100% { transform: translateX(300%); }
+}
+
+/* Pause off-screen animations for high FPS & mobile battery */
+.bf:not(.is-inview) .bf-url,
+.bf:not(.is-inview) .bf-bar span,
+.bf:not(.is-inview) .sk::after,
+.bf:not(.is-inview) .sk-btn,
+.bf:not(.is-inview) .sk,
+.bf:not(.is-inview) .bf-cursor,
+.bf:not(.is-inview) .bf-dot,
+.bf:not(.is-inview) .pkt,
+.bf:not(.is-inview) .bf-ok,
+.bf:not(.is-inview) .bf-loader-bar-fill,
+.bf:not(.is-inview) .bf-loader-spin {
+  animation-play-state: paused !important;
+}
+
 .bf-screen.has-preview::after {
   content: '';
   position: absolute;
