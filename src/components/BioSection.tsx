@@ -126,6 +126,116 @@ const PROJECTS: ProjectItem[] = [
 
 const FLIP_WORDS = ['REACTJS', 'NODEJS', 'FASTAPI', 'FULL STACK', 'AZURE CLOUD', 'CI/CD', 'COSMOSDB', 'MONGODB', 'POSTGRESQL'];
 
+const FLOWS: string[][] = [
+  ['VISITOR', 'CDN', 'REACT UI', 'API'],
+  ['BUYER', 'VERCEL EDGE', 'REACT UI', 'NODE API'],
+  ['CLIENT', 'AZURE', 'FASTAPI', 'COSMOS · PG'],
+];
+
+/** Animated browser mockup + request/response flow diagram, built purely from CSS + a tiny ticker. */
+const PREVIEW_W = 1280; // desktop viewport width the live site is rendered at, then scaled down
+
+const BrowserFlow: React.FC<{ domain: string; nodes: string[]; isLive: boolean; seed: number; previewUrl?: string }> = ({
+  domain,
+  nodes,
+  isLive,
+  seed,
+  previewUrl,
+}) => {
+  const screenRef = useRef<HTMLDivElement>(null);
+  const [scale, setScale] = useState(0.3);
+  const [box, setBox] = useState({ w: 0, h: 0 });
+  const [loaded, setLoaded] = useState(false);
+
+  // scale the 1280px-wide site to whatever width the mockup has
+  useEffect(() => {
+    const el = screenRef.current;
+    if (!el || !previewUrl) return;
+    const ro = new ResizeObserver(() => {
+      setScale(el.clientWidth / PREVIEW_W);
+      setBox({ w: el.clientWidth, h: el.clientHeight });
+    });
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [previewUrl]);
+  const [metric, setMetric] = useState(isLive ? 110 + seed * 19 : 0);
+  useEffect(() => {
+    const id = window.setInterval(
+      () => setMetric((m) => (isLive ? 80 + Math.floor(Math.random() * 90) : m >= 100 ? 0 : m + 4)),
+      isLive ? 1800 : 140
+    );
+    return () => window.clearInterval(id);
+  }, [isLive]);
+
+  const url = isLive ? `https://${domain}` : 'localhost:3000/build';
+  const n = nodes.length;
+  return (
+    <div className={`bf ${isLive ? 'is-live' : 'is-wip'}`} aria-hidden="true">
+      <div className="bf-chrome">
+        <i /><i /><i />
+        <span className="bf-url-wrap">
+          <span className="bf-url" style={{ '--n': url.length } as React.CSSProperties}>{url}</span>
+        </span>
+      </div>
+      <div ref={screenRef} className={`bf-screen ${previewUrl ? 'has-preview' : ''}`}>
+        <div className="bf-bar"><span /></div>
+        <div className="sk sk-nav"><b /><b /><b /></div>
+        <div className="sk sk-hero"><span className="sk-line w70" /><span className="sk-line w45" /><span className="sk-btn" /></div>
+        <div className="sk-row"><div className="sk sk-card" /><div className="sk sk-card" /><div className="sk sk-card" /></div>
+        <span className="bf-cursor" />
+        {previewUrl && (
+          <iframe
+            className={`bf-iframe ${loaded ? 'is-loaded' : ''}`}
+            src={previewUrl}
+            title={`Live preview of ${domain}`}
+            loading="lazy"
+            tabIndex={-1}
+            sandbox="allow-scripts allow-same-origin"
+            referrerPolicy="no-referrer"
+            onLoad={() => setLoaded(true)}
+            style={{
+              width: PREVIEW_W,
+              height: scale > 0 ? box.h / scale : 800,
+              transform: `scale(${scale})`,
+            }}
+          />
+        )}
+      </div>
+      <div className="bf-flow" style={{ '--n': n } as React.CSSProperties}>
+        {nodes.map((label, i) => (
+          <React.Fragment key={label}>
+            <div className="bf-node" style={{ '--i': i } as React.CSSProperties}>
+              <span className="bf-dot" />
+              <em>{label}</em>
+            </div>
+            {i < n - 1 && (
+              <div className="bf-link" style={{ '--i': i, '--ri': n - 2 - i } as React.CSSProperties}>
+                <span className="pkt" />
+                <span className="pkt back" />
+              </div>
+            )}
+          </React.Fragment>
+        ))}
+      </div>
+      <div className="bf-stat">
+        {isLive ? (
+          <>
+            <span className="bf-ok" />
+            <span>200 OK</span>
+            <b>{metric}ms</b>
+          </>
+        ) : (
+          <>
+            <span>BUILDING</span>
+            <span className="bf-prog"><span style={{ width: `${metric}%` }} /></span>
+            <b>{metric}%</b>
+          </>
+        )}
+      </div>
+    </div>
+  );
+};
+
 /* ── Interaction helpers ── */
 const GLYPHS = '!<>-_\\/[]{}=+*^?#01';
 
@@ -399,13 +509,43 @@ export const BioSection: React.FC = () => {
         });
       }
 
-      // Project rows: parallax index + clip reveal
-      gsap.utils.toArray<HTMLElement>('.project-row-card').forEach((row) => {
-        gsap.from(row.querySelector('.project-index'), {
-          y: 30,
-          ease: 'none',
-          scrollTrigger: { trigger: row, start: 'top bottom', end: 'bottom 40%', scrub: true },
+      // ── Selected Works: fast "web-flow" interactions ──
+      // 1) stat counters tick up quickly
+      gsap.utils.toArray<HTMLElement>('.works-stat b').forEach((el) => {
+        const target = Number(el.dataset.count || 0);
+        const suffix = el.dataset.suffix || '';
+        const obj = { v: 0 };
+        el.textContent = `0${suffix}`; // markup holds the real value for reduced-motion users
+        gsap.to(obj, {
+          v: target,
+          duration: 0.9,
+          ease: 'power3.out',
+          onUpdate: () => { el.textContent = `${Math.round(obj.v)}${suffix}`; },
+          scrollTrigger: { trigger: el, start: 'top 92%', once: true },
         });
+      });
+      gsap.from('.works-stat', {
+        y: 24, opacity: 0, duration: 0.45, stagger: 0.08, ease: 'power3.out',
+        scrollTrigger: { trigger: '.works-stats', start: 'top 92%', once: true },
+      });
+
+      // 2) each project card: wipe in, inner pieces stagger (fast)
+      gsap.utils.toArray<HTMLElement>('.project-item').forEach((item) => {
+        const card = item.querySelector<HTMLElement>('.project-row-card');
+        if (!card) return;
+        const tl = gsap.timeline({
+          defaults: { ease: 'power4.out', clearProps: 'transform,opacity' },
+          scrollTrigger: { trigger: item, start: 'top 88%', once: true },
+          onComplete: () => item.classList.add('is-entered'),
+        });
+        tl.fromTo(card, { clipPath: 'inset(0 100% 0 0 round 16px)', opacity: 0 }, { clipPath: 'inset(0 0% 0 0 round 16px)', opacity: 1, duration: 0.55, clearProps: 'clipPath' }, 0)
+          .from(card.querySelector('.project-index'), { y: 18, opacity: 0, duration: 0.35 }, 0.1)
+          .from(card.querySelector('.project-title'), { y: 16, opacity: 0, duration: 0.4 }, 0.12)
+          .from(card.querySelectorAll('.project-status-badge, .project-domain'), { y: 12, opacity: 0, duration: 0.35, stagger: 0.06 }, 0.2)
+          .from(card.querySelector('.project-description'), { y: 14, opacity: 0, duration: 0.4 }, 0.22)
+          .from(card.querySelectorAll('.project-tag'), { scale: 0.5, opacity: 0, duration: 0.35, stagger: 0.05, ease: 'back.out(2.2)' }, 0.3)
+          .from(card.querySelector('.project-arrow'), { scale: 0, rotate: -90, duration: 0.4, ease: 'back.out(2)' }, 0.4)
+          .from(card.querySelector('.deck-visual'), { x: 40, opacity: 0, duration: 0.6 }, 0.15);
       });
 
       // Mobile / tablet: native swipe carousel with live counter
@@ -621,58 +761,64 @@ export const BioSection: React.FC = () => {
               </p>
             </div>
 
+            <div className="works-stats" aria-hidden="true">
+              <div className="works-stat"><b data-count="2">2</b><span>LIVE SITES</span></div>
+              <div className="works-stat"><b data-count="1">1</b><span>IN BUILD</span></div>
+              <div className="works-stat"><b data-count="100" data-suffix="%">100%</b><span>PRODUCTION FOCUS</span></div>
+            </div>
+
             <div className="projects-list">
               {PROJECTS.map((project, idx) => (
-                <a
-                  key={project.title}
-                  href={project.url}
-                  target={project.isLive ? '_blank' : undefined}
-                  rel={project.isLive ? 'noreferrer' : undefined}
-                  className="project-row-card reveal-on-scroll"
-                  style={{ transitionDelay: `${idx * 90}ms` }}
-                  onMouseMove={(e) => trackPointer(e)}
-                >
-                  <div className="project-left">
-                    <span className="project-index">{project.index}</span>
-                    <div>
-                      <div className="project-title-line">
-                        <h4 className="project-title">{project.title}</h4>
-                        <span
-                          className={`project-status-badge ${
-                            project.isLive ? 'badge-live' : 'badge-wip'
-                          }`}
-                        >
-                          {project.isLive ? <Globe size={11} /> : <Sparkles size={11} />}
-                          {project.status}
-                        </span>
+                <div key={project.title} className="project-item" style={{ '--k': idx } as React.CSSProperties}>
+                  <a
+                    href={project.url}
+                    target={project.isLive ? '_blank' : undefined}
+                    rel={project.isLive ? 'noreferrer' : undefined}
+                    className="project-row-card project-deck-card"
+                    onMouseMove={(e) => trackPointer(e, true)}
+                    onMouseLeave={resetTilt}
+                  >
+                    <div className="project-left">
+                      <span className="project-index">{project.index}</span>
+                      <div>
+                        <div className="project-title-line">
+                          <h4 className="project-title">{project.title}</h4>
+                          <span className={`project-status-badge ${project.isLive ? 'badge-live' : 'badge-wip'}`}>
+                            {project.isLive ? <Globe size={11} /> : <Sparkles size={11} />}
+                            {project.status}
+                          </span>
+                        </div>
+                        <span className="project-domain">{project.domain}</span>
                       </div>
-                      <span className="project-domain">{project.domain}</span>
                     </div>
-                  </div>
 
-                  <p className="project-description">{project.description}</p>
+                    <p className="project-description">{project.description}</p>
 
-                  <div className="project-right">
-                    <div className="project-tags">
-                      {project.tags.map((t) => (
-                        <span key={t} className="project-tag">
-                          {t}
-                        </span>
-                      ))}
+                    <div className="project-right">
+                      <div className="project-tags">
+                        {project.tags.map((t) => (
+                          <span key={t} className="project-tag">{t}</span>
+                        ))}
+                      </div>
+                      <div className="project-arrow" onMouseMove={(e) => magnet(e, 0.4)} onMouseLeave={unmagnet}>
+                        <ArrowUpRight size={20} />
+                      </div>
                     </div>
-                    <div
-                      className="project-arrow"
-                      onMouseMove={(e) => magnet(e, 0.4)}
-                      onMouseLeave={unmagnet}
-                    >
-                      <ArrowUpRight size={20} />
+
+                    <div className="deck-visual">
+                      <BrowserFlow
+                        domain={project.domain}
+                        nodes={FLOWS[idx]}
+                        isLive={project.isLive}
+                        seed={idx}
+                        previewUrl={project.isLive ? project.url : undefined}
+                      />
                     </div>
-                  </div>
-                </a>
+                  </a>
+                </div>
               ))}
             </div>
           </div>
-
           {/* GIANT CTA — outline fills as you scroll */}
           <div className="giant-cta" aria-hidden="true">
             <span className="giant-outline">LET&apos;S BUILD</span>
