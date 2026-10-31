@@ -67,6 +67,7 @@
   overflow: hidden;
   user-select: none;
   -webkit-user-select: none;
+  transition: background-color 0.6s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .hero-canvas-layer {
@@ -136,6 +137,7 @@
   letter-spacing: 0.16em;
   color: #8a8a8e;
   text-transform: uppercase;
+  transition: color 0.5s ease;
 }
 
 .hero-side-title {
@@ -146,6 +148,7 @@
   letter-spacing: -0.02em;
   color: #141416;
   text-transform: uppercase;
+  transition: color 0.5s ease;
 }
 
 .hero-side-desc {
@@ -155,6 +158,7 @@
   color: #636369;
   font-weight: 500;
   max-width: 225px;
+  transition: color 0.5s ease;
 }
 
 /* Lando Norris-style lower-left technical spec card */
@@ -171,6 +175,7 @@
   letter-spacing: 0.1em;
   color: #454549;
   margin-bottom: 6px;
+  transition: color 0.5s ease;
 }
 
 .spec-card-body {
@@ -184,6 +189,7 @@
   align-items: center;
   text-align: center;
   gap: 10px;
+  transition: background-color 0.5s ease, border-color 0.5s ease;
 }
 
 .spec-stack-line {
@@ -192,12 +198,14 @@
   font-weight: 700;
   letter-spacing: 0.06em;
   color: #161618;
+  transition: color 0.5s ease;
 }
 
 .spec-divider {
   width: 100%;
   height: 1px;
   background: #222225;
+  transition: background-color 0.5s ease;
 }
 
 .spec-sub {
@@ -207,6 +215,7 @@
   letter-spacing: 0.08em;
   color: #45454a;
   font-weight: 700;
+  transition: color 0.5s ease;
 }
 
 /* Right side scroll cue */
@@ -223,6 +232,7 @@
   font-weight: 700;
   letter-spacing: 0.14em;
   color: #4a4a50;
+  transition: color 0.5s ease;
 }
 
 .scroll-cue-line {
@@ -230,6 +240,7 @@
   height: 44px;
   background: linear-gradient(to bottom, #141416 0%, rgba(20, 20, 22, 0.1) 100%);
   animation: scrollPulse 2s ease-in-out infinite;
+  transition: background 0.5s ease;
 }
 
 @keyframes scrollPulse {
@@ -262,6 +273,367 @@
   .hero-editorial-block {
     margin-top: 2vh;
   }
+}
+
+/* ── 3D PARTICLE DEPTH TOGGLE BUTTON & PARTICLE MODE THEMING ── */
+.hero-top-actions {
+  position: fixed;
+  top: max(26px, calc(env(safe-area-inset-top) + 12px));
+  right: calc(max(38px, env(safe-area-inset-right)) + 124px);
+  z-index: 100;
+  pointer-events: auto;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.hero-light-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 16px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: #FFFFFF;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1.5px solid rgba(255, 255, 255, 0.35);
+  border-radius: 9999px;
+  backdrop-filter: blur(8px);
+  cursor: pointer;
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: 0 0 16px rgba(255, 255, 255, 0.08);
+}
+
+.hero-light-btn:hover {
+  background: #FFFFFF;
+  color: #050505;
+  box-shadow: 0 0 24px rgba(255, 255, 255, 0.5);
+  transform: translateY(-1px);
+}
+
+.hero-light-btn:active {
+  transform: scale(0.96);
+}
+
+.light-icon {
+  transition: transform 0.3s ease;
+}
+
+.hero-light-btn:hover .light-icon {
+  transform: rotate(45deg);
+}
+
+.hero-particle-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 18px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: #141416;
+  background: rgba(255, 255, 255, 0.88);
+  border: 1.5px solid rgba(0, 0, 0, 0.18);
+  border-radius: 9999px;
+  backdrop-filter: blur(8px);
+  cursor: pointer;
+  transition: all 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.05);
+}
+
+.hero-particle-toggle:hover {
+  transform: translateY(-1px);
+  background: #FFFFFF;
+  border-color: rgba(0, 0, 0, 0.3);
+  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.1);
+}
+
+.particle-toggle-icon {
+  transition: transform 0.3s ease;
+}
+
+.hero-particle-toggle:hover .particle-toggle-icon {
+  transform: rotate(20deg) scale(1.1);
+}
+
+/* ── INVERTED STYLES IN 3D PARTICLE DEPTH MODE ── */
+.hero-stage.is-particle-mode {
+  background-color: #050505 !important;
+}
+
+.hero-stage.is-particle-mode .minimal-navbar {
+  mix-blend-mode: normal;
+}
+
+.hero-stage.is-particle-mode .navbar-name {
+  color: #FFFFFF !important;
+}
+
+.hero-stage.is-particle-mode .hero-eyebrow {
+  color: #8E8E96;
+}
+
+.hero-stage.is-particle-mode .hero-side-title {
+  color: #FFFFFF;
+}
+
+.hero-stage.is-particle-mode .hero-side-desc {
+  color: #C2C2C8;
+}
+
+.hero-stage.is-particle-mode .hero-spec-card .spec-card-header {
+  color: #A0A0A8;
+}
+
+.hero-stage.is-particle-mode .hero-spec-card .spec-card-body {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.18);
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.5);
+}
+
+.hero-stage.is-particle-mode .spec-stack-line {
+  color: #FFFFFF;
+}
+
+.hero-stage.is-particle-mode .spec-divider {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.hero-stage.is-particle-mode .spec-sub {
+  color: #D6D6DC;
+}
+
+.hero-stage.is-particle-mode .scroll-cue-text {
+  color: #D6D6DC;
+}
+
+.hero-stage.is-particle-mode .scroll-cue-line {
+  background: linear-gradient(to bottom, #FFFFFF 0%, rgba(255, 255, 255, 0.08) 100%);
+}
+
+.hero-stage.is-particle-mode .hero-particle-toggle {
+  color: #FFFFFF;
+  background: rgba(255, 255, 255, 0.12);
+  border-color: rgba(255, 255, 255, 0.3);
+  box-shadow: 0 0 20px rgba(255, 255, 255, 0.08);
+}
+
+.hero-stage.is-particle-mode .hero-particle-toggle:hover {
+  background: rgba(255, 255, 255, 0.22);
+  border-color: rgba(255, 255, 255, 0.55);
+}
+
+.hero-stage.is-particle-mode .particle-cue-text {
+  letter-spacing: 0.18em;
+  color: #A0A0A8;
+  font-size: 8.5px;
+}
+
+@media (max-width: 768px) {
+  .hero-top-actions {
+    top: max(18px, calc(env(safe-area-inset-top) + 8px));
+    right: calc(max(16px, env(safe-area-inset-right)) + 104px);
+  }
+  .hero-light-btn {
+    padding: 8px 12px;
+    font-size: 10px;
+    gap: 5px;
+    border-width: 1px;
+  }
+  .hero-particle-toggle {
+    padding: 8px 13px;
+    font-size: 10px;
+    gap: 6px;
+    border-width: 1px;
+  }
+}
+
+/* ── DAO-STYLE CAD TELEMETRY FRAME & TICK RULERS ── */
+.dao-cad-frame {
+  position: absolute;
+  inset: 18px;
+  pointer-events: none;
+  z-index: 4;
+}
+
+.cad-corner {
+  position: absolute;
+  font-family: var(--font-mono);
+  font-size: 14px;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.4);
+  line-height: 1;
+}
+.cad-tl { top: 0; left: 0; }
+.cad-tr { top: 0; right: 0; }
+.cad-bl { bottom: 0; left: 0; }
+.cad-br { bottom: 0; right: 0; }
+
+.cad-ruler {
+  position: absolute;
+  opacity: 0.22;
+}
+.cad-ruler-top {
+  top: 0;
+  left: 40px;
+  right: 40px;
+  height: 6px;
+  background: repeating-linear-gradient(90deg, #FFFFFF 0px, #FFFFFF 1px, transparent 1px, transparent 14px);
+}
+.cad-ruler-bottom {
+  bottom: 0;
+  left: 40px;
+  right: 40px;
+  height: 6px;
+  background: repeating-linear-gradient(90deg, #FFFFFF 0px, #FFFFFF 1px, transparent 1px, transparent 14px);
+}
+.cad-ruler-left {
+  left: 0;
+  top: 40px;
+  bottom: 40px;
+  width: 6px;
+  background: repeating-linear-gradient(180deg, #FFFFFF 0px, #FFFFFF 1px, transparent 1px, transparent 14px);
+}
+.cad-ruler-right {
+  right: 0;
+  top: 40px;
+  bottom: 40px;
+  width: 6px;
+  background: repeating-linear-gradient(180deg, #FFFFFF 0px, #FFFFFF 1px, transparent 1px, transparent 14px);
+}
+
+.cad-telemetry-tag {
+  position: absolute;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  color: rgba(255, 255, 255, 0.4);
+}
+.cad-telemetry-tag.top-left {
+  top: 10px;
+  left: 14px;
+}
+.cad-telemetry-tag.bottom-left {
+  bottom: 10px;
+  left: 14px;
+}
+
+/* ── 3D TELEMETRY TRACKING BOXES [+] (DAO STYLE) ── */
+.dao-markers-layer {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 5;
+}
+
+.telemetry-box {
+  position: absolute;
+  top: 0;
+  left: 0;
+  transform-origin: 0 0;
+  will-change: transform;
+  transition: filter 0.2s ease;
+}
+
+.telemetry-bracket {
+  position: relative;
+  width: 14px;
+  height: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.telemetry-cross {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  line-height: 1;
+  color: #FFFFFF;
+  transition: transform 0.25s ease, color 0.25s ease;
+}
+
+.telemetry-bracket .corner {
+  position: absolute;
+  width: 4px;
+  height: 4px;
+  border-color: #FFFFFF;
+  border-style: solid;
+  transition: border-color 0.25s ease, transform 0.25s ease;
+}
+.telemetry-bracket .corner-tl { top: 0; left: 0; border-width: 1px 0 0 1px; }
+.telemetry-bracket .corner-tr { top: 0; right: 0; border-width: 1px 1px 0 0; }
+.telemetry-bracket .corner-bl { bottom: 0; left: 0; border-width: 0 0 1px 1px; }
+.telemetry-bracket .corner-br { bottom: 0; right: 0; border-width: 0 1px 1px 0; }
+
+.telemetry-coord {
+  position: absolute;
+  left: 20px;
+  top: -1px;
+  white-space: nowrap;
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: #FFFFFF;
+  text-shadow: 0 0 8px rgba(255, 255, 255, 0.45);
+  transition: color 0.25s ease, text-shadow 0.25s ease;
+}
+
+/* ── LIGHT FLASH LOCALIZED PINCH HALO (IMAGE 2 STYLE) ── */
+.box-flash-halo {
+  position: absolute;
+  top: 7px;
+  left: 7px;
+  width: 96px;
+  height: 96px;
+  transform: translate(-50%, -50%) scale(0.2);
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(255, 252, 235, 0.9) 0%, rgba(255, 240, 180, 0.5) 25%, rgba(255, 225, 130, 0.14) 52%, transparent 74%);
+  pointer-events: none;
+  opacity: 0;
+  mix-blend-mode: screen;
+}
+
+.telemetry-box.is-flashing .box-flash-halo {
+  animation: flashPinchHalo 0.48s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes flashPinchHalo {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.2);
+  }
+  25% {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1.0);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(1.35);
+  }
+}
+
+.telemetry-box.is-flashing .telemetry-bracket .corner {
+  border-color: #FFFFFF;
+  filter: drop-shadow(0 0 6px #FFFFFF);
+  transform: scale(1.2);
+}
+
+.telemetry-box.is-flashing .telemetry-cross {
+  color: #FFFFFF;
+  text-shadow: 0 0 8px #FFFFFF;
+  transform: scale(1.25);
+}
+
+.telemetry-box.is-flashing .telemetry-coord {
+  color: #FFFFFF;
+  text-shadow: 0 0 10px rgba(255, 255, 255, 0.95);
 }
 
 /* ═══════════════════════════════════════════════════════════
