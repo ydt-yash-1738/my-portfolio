@@ -434,16 +434,13 @@
   font-size: 8.5px;
 }
 
-@media (max-width: 768px) {
+@media (max-width: 768px), (hover: none) {
   .hero-top-actions {
     top: max(18px, calc(env(safe-area-inset-top) + 8px));
     right: calc(max(16px, env(safe-area-inset-right)) + 104px);
   }
   .hero-light-btn {
-    padding: 8px 12px;
-    font-size: 10px;
-    gap: 5px;
-    border-width: 1px;
+    display: none !important;
   }
   .hero-particle-toggle {
     padding: 8px 13px;
@@ -1911,15 +1908,25 @@ body { overscroll-behavior-y: none; }
 @media (prefers-reduced-motion: reduce) { .site-loader { transition: opacity 0.3s ease; } .site-loader.is-leaving { transform: none; opacity: 0; } }
 
 /* ═══════════════════════════════════════════════════════════
-   13. HERO LOCK (mobile / touch)
+   13. HERO LOCK & MOBILE BOTTOM CONTROLS (mobile / touch)
    ═══════════════════════════════════════════════════════════ */
+.hero-bottom-controls { display: none; }
 .hero-lock-btn { display: none; }
+.hero-mobile-light-btn { display: none; }
+
 @media (hover: none), (max-width: 768px) {
-  .hero-lock-btn {
+  .hero-bottom-controls {
     position: absolute;
     left: 20px;
     bottom: max(26px, calc(env(safe-area-inset-bottom) + 14px));
-    z-index: 8;
+    z-index: 10;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    pointer-events: auto;
+  }
+  .hero-lock-btn {
+    position: static;
     display: inline-flex;
     align-items: center;
     gap: 8px;
@@ -1935,11 +1942,52 @@ body { overscroll-behavior-y: none; }
     font-weight: 700;
     letter-spacing: 0.12em;
     cursor: pointer;
-    transition: background-color 0.25s ease, color 0.25s ease, transform 0.2s ease;
+    transition: background-color 0.25s ease, color 0.25s ease, transform 0.2s ease, border-color 0.25s ease;
     -webkit-tap-highlight-color: transparent;
   }
   .hero-lock-btn:active { transform: scale(0.96); }
   .hero-lock-btn.is-locked { background: var(--accent-red); border-color: var(--accent-red); color: #fff; }
+
+  /* Dark 3D particle mode theming for mobile lock button */
+  .hero-stage.is-particle-mode .hero-lock-btn:not(.is-locked) {
+    background: rgba(255, 255, 255, 0.12);
+    border-color: rgba(255, 255, 255, 0.35);
+    color: #FFFFFF;
+    box-shadow: 0 0 16px rgba(255, 255, 255, 0.08);
+  }
+
+  /* Lightning sign button next to lock button */
+  .hero-mobile-light-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 37px;
+    height: 37px;
+    border-radius: 999px;
+    border: 1.5px solid rgba(255, 255, 255, 0.35);
+    background: rgba(255, 255, 255, 0.12);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+    color: #FFFFFF;
+    cursor: pointer;
+    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    -webkit-tap-highlight-color: transparent;
+    box-shadow: 0 0 16px rgba(255, 255, 255, 0.08);
+    flex-shrink: 0;
+  }
+  .hero-mobile-light-btn:active {
+    transform: scale(0.92);
+    background: #FFFFFF;
+    color: #050505;
+    box-shadow: 0 0 20px rgba(255, 255, 255, 0.7);
+  }
+  .mobile-light-icon {
+    transition: transform 0.2s ease;
+  }
+  .hero-mobile-light-btn:active .mobile-light-icon {
+    transform: scale(1.15) rotate(10deg);
+  }
+
   .hero-stage.is-locked,
   .hero-stage.is-locked .hero-canvas-layer { touch-action: none; }
   .hero-stage.is-locked .scroll-cue-text { opacity: 0.35; }

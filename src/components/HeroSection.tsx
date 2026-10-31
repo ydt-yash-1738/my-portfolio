@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Lock, LockOpen, Sparkles, Image as ImageIcon, SunMedium } from 'lucide-react';
+import { Lock, LockOpen, Sparkles, Image as ImageIcon, SunMedium, Zap } from 'lucide-react';
 import LorenzoInteractivePortrait from './LorenzoInteractivePortrait';
 import ParticleDepthPortrait from './ParticleDepthPortrait';
 
@@ -7,10 +7,9 @@ export const HeroSection: React.FC = () => {
   const [locked, setLocked] = useState(false);
   const [isParticleMode, setIsParticleMode] = useState(false);
 
-  // Freeze page scroll when locked (mobile) OR when interacting with the 3D particle depth portrait
+  // Freeze page scroll ONLY when the hero is explicitly locked (mobile / touch)
   useEffect(() => {
-    const shouldFreeze = locked || isParticleMode;
-    if (!shouldFreeze) return;
+    if (!locked) return;
 
     const html = document.documentElement;
     const prevHtml = html.style.overflow;
@@ -45,7 +44,7 @@ export const HeroSection: React.FC = () => {
       html.style.overflow = prevHtml;
       document.body.style.overflow = prevBody;
     };
-  }, [locked, isParticleMode]);
+  }, [locked]);
 
   return (
     <section className={`hero-stage ${locked ? 'is-locked' : ''} ${isParticleMode ? 'is-particle-mode' : ''}`}>
@@ -74,7 +73,10 @@ export const HeroSection: React.FC = () => {
         <button
           type="button"
           className={`hero-particle-toggle ${isParticleMode ? 'is-active' : ''}`}
-          onClick={() => setIsParticleMode((v) => !v)}
+          onClick={() => {
+            setIsParticleMode((v) => !v);
+            setLocked(false);
+          }}
           aria-pressed={isParticleMode}
           title={isParticleMode ? 'Return to 2D portrait' : 'Explore 3D Particle Depth'}
         >
@@ -86,7 +88,7 @@ export const HeroSection: React.FC = () => {
           ) : (
             <>
               <Sparkles size={14} className="particle-toggle-icon" />
-              <span>3D PARTICLES</span>
+              <span>GOING DARK</span>
             </>
           )}
         </button>
@@ -99,6 +101,7 @@ export const HeroSection: React.FC = () => {
             imageSrc="/portrait-base-cutout.png"
             depthSrc="/portrait-depth.png"
             onClose={() => setIsParticleMode(false)}
+            isLocked={locked}
           />
         ) : (
           <LorenzoInteractivePortrait
@@ -165,7 +168,12 @@ export const HeroSection: React.FC = () => {
           {/* Bottom hint or cue */}
           <div className="hero-scroll-cue">
             {isParticleMode ? (
-              <span className="scroll-cue-text particle-cue-text">DRAG TO ROTATE 3D · CLICK LIGHT TO FLASH</span>
+              <>
+                <span className="scroll-cue-text particle-cue-text">
+                  {locked ? 'DRAG TO ROTATE 3D' : 'DRAG TO ROTATE · SCROLL FOR BIO'}
+                </span>
+                {!locked && <span className="scroll-cue-line" />}
+              </>
             ) : (
               <>
                 <span className="scroll-cue-text">SCROLL FOR BIO &amp; WORKS</span>
@@ -176,8 +184,8 @@ export const HeroSection: React.FC = () => {
         </div>
       </div>
 
-      {/* Mobile-only lock toggle (only shown in 2D mode, as particle mode auto-locks) */}
-      {!isParticleMode && (
+      {/* Mobile-only bottom controls: Lock toggle and 3D Particle Lightning action */}
+      <div className="hero-bottom-controls">
         <button
           type="button"
           className={`hero-lock-btn ${locked ? 'is-locked' : ''}`}
@@ -188,7 +196,19 @@ export const HeroSection: React.FC = () => {
           {locked ? <Lock size={15} /> : <LockOpen size={15} />}
           <span>{locked ? 'LOCKED · DRAG TO PLAY' : 'LOCK TO PLAY'}</span>
         </button>
-      )}
+
+        {isParticleMode && (
+          <button
+            type="button"
+            className="hero-mobile-light-btn"
+            onClick={() => window.dispatchEvent(new CustomEvent('trigger-node-flash'))}
+            title="Flash Scene Lighting & Telemetry Sensors"
+            aria-label="Flash Lighting"
+          >
+            <Zap size={15} className="mobile-light-icon" />
+          </button>
+        )}
+      </div>
     </section>
   );
 };

@@ -5,6 +5,7 @@ export interface ParticleDepthPortraitProps {
   imageSrc?: string;
   depthSrc?: string;
   onClose?: () => void;
+  isLocked?: boolean;
 }
 
 interface TrackingNodeData {
@@ -115,8 +116,13 @@ function loadHtmlImage(src: string): Promise<HTMLImageElement> {
 export const ParticleDepthPortrait: React.FC<ParticleDepthPortraitProps> = ({
   imageSrc = '/portrait-base-cutout.png',
   depthSrc = '/portrait-depth.png',
+  isLocked = false,
 }) => {
   const containerRef = useRef<HTMLDivElement | null>(null);
+  const isLockedRef = useRef(isLocked);
+  useEffect(() => {
+    isLockedRef.current = isLocked;
+  }, [isLocked]);
   const [markers, setMarkers] = useState<ProjectedMarker[]>([]);
   const [lampLinks, setLampLinks] = useState<Array<{ x1: number; y1: number; x2: number; y2: number; alpha: number }>>([]);
 
@@ -859,6 +865,7 @@ export const ParticleDepthPortrait: React.FC<ParticleDepthPortraitProps> = ({
 
     const handlePointerDown = (e: PointerEvent) => {
       if ((e.target as HTMLElement)?.closest?.('button, a')) return;
+      if (e.pointerType === 'touch' && !isLockedRef.current) return;
       isDragging = true;
       lastMouseX = e.clientX;
       lastMouseY = e.clientY;
@@ -882,7 +889,7 @@ export const ParticleDepthPortrait: React.FC<ParticleDepthPortraitProps> = ({
 
         targetRotX = Math.max(-0.75, Math.min(0.75, targetRotX));
         targetRotY = Math.max(-1.68, Math.min(1.68, targetRotY));
-      } else {
+      } else if (e.pointerType !== 'touch') {
         recordPointerWake(e.clientX, e.clientY);
         const curW = container.clientWidth || width;
         const curH = container.clientHeight || height;
@@ -1150,7 +1157,7 @@ export const ParticleDepthPortrait: React.FC<ParticleDepthPortraitProps> = ({
         width: '100%',
         height: '100%',
         cursor: 'grab',
-        touchAction: 'none',
+        touchAction: isLocked ? 'none' : 'pan-y',
         overflow: 'hidden',
       }}
     >
