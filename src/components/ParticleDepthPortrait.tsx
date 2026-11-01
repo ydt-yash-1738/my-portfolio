@@ -6,6 +6,7 @@ export interface ParticleDepthPortraitProps {
   depthSrc?: string;
   onClose?: () => void;
   isLocked?: boolean;
+  titleTag?: string;
 }
 
 interface TrackingNodeData {
@@ -117,6 +118,7 @@ export const ParticleDepthPortrait: React.FC<ParticleDepthPortraitProps> = ({
   imageSrc = '/portrait-base-cutout.png',
   depthSrc = '/portrait-depth.png',
   isLocked = false,
+  titleTag = '01 / 01 // YASH',
 }) => {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const isLockedRef = useRef(isLocked);
@@ -193,14 +195,14 @@ export const ParticleDepthPortrait: React.FC<ParticleDepthPortraitProps> = ({
     const portraitGroup = new THREE.Group();
     scene.add(portraitGroup);
 
-    const imgWidth = 1536;
-    const imgHeight = 2324;
+    let activeImgW = 1536;
+    let activeImgH = 2324;
 
-    const baseScale = Math.min(width / imgWidth, height / imgHeight);
+    const baseScale = Math.min(width / activeImgW, height / activeImgH);
     const zoomFactor = 1.07;
     const scale = baseScale * zoomFactor;
-    const planeWidth = imgWidth * scale;
-    const planeHeight = imgHeight * scale;
+    const planeWidth = activeImgW * scale;
+    const planeHeight = activeImgH * scale;
     const bleedBottom = Math.max(36, height * 0.045);
     const posY = -(height / 2) + planeHeight / 2 - bleedBottom;
 
@@ -594,6 +596,48 @@ export const ParticleDepthPortrait: React.FC<ParticleDepthPortraitProps> = ({
       .then(([baseImg, depthImg]) => {
         if (disposed) return;
 
+        // Dynamically compute exact uncropped plane dimensions based on the natural asset size
+        const curImgW = baseImg.naturalWidth || 1536;
+        const curImgH = baseImg.naturalHeight || 2324;
+        activeImgW = curImgW;
+        activeImgH = curImgH;
+
+        const curRatio = curImgW / curImgH;
+        const isLandscapeOrSquare = curRatio > 0.85;
+
+        // In landscape or square mode (logos, widescreen photos), fit comfortably within 84% width and 78% height
+        // In vertical portrait mode, fill the vertical height
+        const maxW = isLandscapeOrSquare ? width * 0.84 : width;
+        const maxH = isLandscapeOrSquare ? height * 0.78 : height;
+        const fitScale = isLandscapeOrSquare
+          ? Math.min(maxW / curImgW, maxH / curImgH)
+          : Math.min(width / curImgW, height / curImgH) * 1.07;
+
+        const newPlaneW = curImgW * fitScale;
+        const newPlaneH = curImgH * fitScale;
+
+        // Position: center landscape/square assets vertically; bleed bottom edge for portrait people
+        const newPosY = isLandscapeOrSquare
+          ? 0
+          : -(height / 2) + newPlaneH / 2 - Math.max(36, height * 0.045);
+
+        portraitGroup.position.set(0, newPosY, 0);
+        uniforms.uPlaneSize.value.set(newPlaneW, newPlaneH);
+
+        const updatedMetrics = computeSizeAndGain(newPlaneH, dpr);
+        uniforms.uPointSize.value = updatedMetrics.pointSize;
+        uniforms.uGain.value = updatedMetrics.gain;
+
+        // Re-align tracking nodes to fit the new plane aspect ratio
+        trackingNodes.forEach((n) => {
+          n.basePos.set(
+            n.nx * (newPlaneW * 0.5),
+            n.ny * (newPlaneH * 0.5),
+            n.nz * (depthExtrusion * 0.65)
+          );
+          n.currentPos.copy(n.basePos);
+        });
+
         const gridN = 1024;
         const gridShift = 10; // log2(1024)
         const totalCells = gridN * gridN;
@@ -632,6 +676,12 @@ export const ParticleDepthPortrait: React.FC<ParticleDepthPortraitProps> = ({
             const idx = row * gridN + col;
             const cutAlpha = cutArr[idx];
 
+            const rawS4 = idx * 4;
+            const r0 = rgba[rawS4] / 255.0;
+            const r1 = rgba[rawS4 + 1] / 255.0;
+            const r2 = rgba[rawS4 + 2] / 255.0;
+            lumArr[idx] = 0.2126 * r0 + 0.7152 * r1 + 0.0722 * r2;
+
             if (cutAlpha > 0.45) {
               // Check if pixel is within 4px of the cutout edge where white studio backdrop bled into hair/hoodie
               const cL = cutArr[row * gridN + Math.max(0, col - 4)];
@@ -641,7 +691,9 @@ export const ParticleDepthPortrait: React.FC<ParticleDepthPortraitProps> = ({
               const isNearSilhouetteEdge = Math.min(cutAlpha, cL, cR, cU, cD) < 0.92;
 
               let sampleIdx = idx;
-              if (isNearSilhouetteEdge) {
+              // Only step inward if pixel suffered bright white studio backdrop bleed
+              const isWhiteBleed = r0 > 0.88 && r1 > 0.88 && r2 > 0.88;
+              if (isNearSilhouetteEdge && isWhiteBleed) {
                 // Step 5px inward toward portrait center so edge grains inherit true hair/skin/hoodie color
                 const inCol = Math.max(0, Math.min(gridN - 1, col + (col < 512 ? 5 : -5)));
                 const inRow = Math.max(0, Math.min(gridN - 1, row + (row < 620 ? 5 : -5)));
@@ -1107,17 +1159,24 @@ export const ParticleDepthPortrait: React.FC<ParticleDepthPortraitProps> = ({
       uniforms.uCameraZ.value = newCameraZ;
       uniforms.uAspect.value = newW / newH;
 
-      const newScale = Math.min(newW / imgWidth, newH / imgHeight) * zoomFactor;
-      const newPlaneW = imgWidth * newScale;
-      const newPlaneH = imgHeight * newScale;
+      const isLandscapeOrSquare = (activeImgW / activeImgH) > 0.85;
+      const maxW = isLandscapeOrSquare ? newW * 0.84 : newW;
+      const maxH = isLandscapeOrSquare ? newH * 0.78 : newH;
+      const newScale = isLandscapeOrSquare
+        ? Math.min(maxW / activeImgW, maxH / activeImgH)
+        : Math.min(newW / activeImgW, newH / activeImgH) * 1.07;
+
+      const newPlaneW = activeImgW * newScale;
+      const newPlaneH = activeImgH * newScale;
       uniforms.uPlaneSize.value.set(newPlaneW, newPlaneH);
 
       const updatedMetrics = computeSizeAndGain(newPlaneH, curDpr);
       uniforms.uPointSize.value = updatedMetrics.pointSize;
       uniforms.uGain.value = updatedMetrics.gain;
 
-      const newBleedBottom = Math.max(36, newH * 0.045);
-      const newPosY = -(newH / 2) + newPlaneH / 2 - newBleedBottom;
+      const newPosY = isLandscapeOrSquare
+        ? 0
+        : -(newH / 2) + newPlaneH / 2 - Math.max(36, newH * 0.045);
       portraitGroup.position.set(0, newPosY, 0);
 
       renderer.setPixelRatio(curDpr);
@@ -1173,7 +1232,7 @@ export const ParticleDepthPortrait: React.FC<ParticleDepthPortraitProps> = ({
         <div className="cad-ruler cad-ruler-left" />
         <div className="cad-ruler cad-ruler-right" />
 
-        <div className="cad-telemetry-tag top-left">01 / 01 // YASH 聚</div>
+        <div className="cad-telemetry-tag top-left">{titleTag}</div>
         <div className="cad-telemetry-tag bottom-left">524,288 PTS</div>
       </div>
 
