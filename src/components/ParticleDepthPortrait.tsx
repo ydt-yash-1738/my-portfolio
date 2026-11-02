@@ -67,7 +67,7 @@ const biExpNorm = (tDecay: number, tRise: number) =>
 
 const LAMP_ENV_NORM = biExpNorm(0.45, 0.018);
 
-// Cached 2D Hilbert space-filling curve lookup table (exact W() from gather.be-of-dao.com)
+// Cached 2D Hilbert space-filling curve lookup table
 let cachedHilbertGridSize = 0;
 let cachedHilbertTable: Uint32Array | null = null;
 
@@ -171,7 +171,7 @@ export const ParticleDepthPortrait: React.FC<ParticleDepthPortraitProps> = ({
     const dpr = Math.min(window.devicePixelRatio || 1, 2);
 
     // ── SCENE & CAMERA ──
-    const fov = 34; // Matches gather.be-of-dao.com's tan(17 deg) half-FOV
+    const fov = 34; // 17 deg half-FOV
     const fovRad = (fov * Math.PI) / 180;
     const cameraZ = (height / 2) / Math.tan(fovRad / 2);
 
@@ -248,7 +248,7 @@ export const ParticleDepthPortrait: React.FC<ParticleDepthPortraitProps> = ({
     const lineSegments = new THREE.LineSegments(lineGeo, lineMat);
     portraitGroup.add(lineSegments);
 
-    // ── 3-LAMP POOL (gather.be-of-dao.com's exact At[] & zt() snare/light system) ──
+    // ── 3-LAMP POOL (dynamic snare/light system) ──
     const lamps: LampData[] = [0, 1, 2].map((idx) => ({
       id: `L${idx + 1}`,
       nx: 0,
@@ -279,7 +279,7 @@ export const ParticleDepthPortrait: React.FC<ParticleDepthPortraitProps> = ({
       lamp.r = Math.min(1.35, lamp.r + strength);
     };
 
-    // ── HIGH-DENSITY 524,288 PARTICLE CLOUD (gather.be-of-dao.com's bits=19 / 18) ──
+    // ── HIGH-DENSITY 524,288 PARTICLE CLOUD (bits=19 / 18) ──
     const isMobile = window.innerWidth < 768;
     const totalPoints = isMobile ? 262144 : 524288; // 2^18 on mobile, 2^19 on desktop
 
@@ -292,7 +292,7 @@ export const ParticleDepthPortrait: React.FC<ParticleDepthPortraitProps> = ({
     // Deterministic per-grain random seeds: r1, r2, r3, r4
     const aRandom = new Float32Array(totalPoints * 4);
 
-    // Mulberry32 PRNG matching gather.be-of-dao.com's t(seed)
+    // Mulberry32 PRNG
     const createMulberry32 = (initialSeed: number) => {
       let s = initialSeed | 0;
       return () => {
@@ -323,7 +323,7 @@ export const ParticleDepthPortrait: React.FC<ParticleDepthPortraitProps> = ({
     geometry.setAttribute('aMeta', metaAttr);
     geometry.setAttribute('aRandom', randAttr);
 
-    // Compute gather.be-of-dao.com's exact micro-grain size (k) and energy gain (T)
+    // Compute micro-grain size (k) and energy gain (T)
     const computeSizeAndGain = (curPlaneH: number, curDpr: number) => {
       const b = curPlaneH * 0.56 * curDpr;
       // Ultra-fine sand grains: ~1.25px to 1.65px in device pixels
@@ -335,7 +335,7 @@ export const ParticleDepthPortrait: React.FC<ParticleDepthPortraitProps> = ({
 
     const initialMetrics = computeSizeAndGain(planeHeight, dpr);
 
-    // 6-slot pointer wake buffer (gather's uBrush[6])
+    // 6-slot pointer wake buffer (uBrush[6])
     const brushUniformArray = Array.from({ length: 6 }, () => new THREE.Vector4(0, 0, 0, 0));
 
     const uniforms = {
@@ -390,7 +390,7 @@ export const ParticleDepthPortrait: React.FC<ParticleDepthPortraitProps> = ({
 
       varying vec3 vCol;
 
-      // 3D curl-like harmonic flow field from gather.be-of-dao.com
+      // 3D curl-like harmonic flow field
       vec3 flow(vec3 q, float t) {
         return 0.5 * vec3(
           sin(q.y * 2.3 + t) + sin(q.z * 3.1 - t * 0.7 + q.x),
@@ -424,7 +424,7 @@ export const ParticleDepthPortrait: React.FC<ParticleDepthPortraitProps> = ({
           }
         }
 
-        // Slow organic breathing (gather.be-of-dao.com's exact uBreath)
+        // Slow organic breathing (uBreath)
         float breathPhase = fract(uTime / 5.6);
         float uBreath = (breathPhase < 0.42
           ? -cos(3.14159265 * breathPhase / 0.42)
@@ -442,12 +442,12 @@ export const ParticleDepthPortrait: React.FC<ParticleDepthPortraitProps> = ({
         p.xy *= 1.0 + 0.011 * uBreath;
         p.z = p.z * (1.0 + 0.08 * uBreath) + 0.014 * uBreath;
 
-        // The held side barely stirs (exact 0.0035 amplitude from gather.be-of-dao.com)
+        // The held side barely stirs (0.0035 amplitude)
         p += flow(p * 2.0 + r2 * 3.0, uTime * 0.2) * 0.0035;
 
-        // ── RAGGED NON-LINEAR WIND DRIFT (gather.be-of-dao.com's exact algorithm) ──
+        // ── RAGGED NON-LINEAR WIND DRIFT ──
         // Drift releases off the right edge (+X) so the entire central face (both eyes, glasses, nose, mouth)
-        // stays 100% dense and sharp, matching gather.be-of-dao.com
+        // stays 100% dense and sharp
         float windSign = uRotY < -0.35 ? -1.0 : 1.0;
         vec2 lineNormal = vec2(0.9889 * windSign, -0.1488);
         vec2 lineTangent = vec2(-lineNormal.y, lineNormal.x);
@@ -489,7 +489,7 @@ export const ParticleDepthPortrait: React.FC<ParticleDepthPortraitProps> = ({
           home = (1.0 + 0.6 * away * (1.0 - away) * (1.0 - min(1.0, gone * 6.0))) * (1.0 - 0.6 * away * away);
         }
 
-        // ── 3D LAMP ILLUMINATION ON PARTICLES (gather.be-of-dao.com's exact inverse-square law) ──
+        // ── 3D LAMP ILLUMINATION ON PARTICLES (inverse-square law) ──
         vec3 d0 = p - uLamp0.xyz;
         vec3 d1 = p - uLamp1.xyz;
         vec3 d2 = p - uLamp2.xyz;
@@ -497,8 +497,8 @@ export const ParticleDepthPortrait: React.FC<ParticleDepthPortraitProps> = ({
                   + uLamp1.w / (1.0 + dot(d1, d1) * 3.2)
                   + uLamp2.w / (1.0 + dot(d2, d2) * 3.2);
 
-        // Convert from normalized gather space [-1, 1] to Three.js world space
-        vec3 gatheredPos = vec3(
+        // Convert from normalized canonical space [-1, 1] to Three.js world space
+        vec3 assembledPos = vec3(
           p.x * (uPlaneSize.x * 0.5),
           p.y * (uPlaneSize.y * 0.5),
           -p.z * uDepthScale
@@ -508,22 +508,22 @@ export const ParticleDepthPortrait: React.FC<ParticleDepthPortraitProps> = ({
         if (uBurstProgress > 0.0) {
           float dist = length(position.xy - uBurstCenter);
           float wave = sin(clamp((dist * 4.5 - uBurstProgress * 7.0), 0.0, 3.14159));
-          gatheredPos += (aRandom.xyz - 0.5) * 2.0 * wave * 135.0;
+          assembledPos += (aRandom.xyz - 0.5) * 2.0 * wave * 135.0;
         }
 
-        // Initial scatter / gather entrance trajectory
+        // Initial scatter / assembly entrance trajectory
         vec3 scatterOffset = vec3(
           (r1 - 0.5) * 1600.0 + sin(uTime * 1.2 + r2 * 6.28) * 60.0,
           (r2 - 0.5) * 1600.0 + cos(uTime * 1.2 + r1 * 6.28) * 60.0,
           (r3 - 0.5) * 1800.0
         );
 
-        vec3 finalPos = mix(gatheredPos, gatheredPos + scatterOffset, uScatter);
+        vec3 finalPos = mix(assembledPos, assembledPos + scatterOffset, uScatter);
 
         vec4 mvPosition = modelViewMatrix * vec4(finalPos, 1.0);
         vec4 cp = projectionMatrix * mvPosition;
 
-        // ── POINTER WAKE ("a hand through smoke" from gather.be-of-dao.com) ──
+        // ── POINTER WAKE ("a hand through smoke") ──
         vec2 sp = cp.xy / max(cp.w, 0.05);
         vec2 asp = vec2(uAspect, 1.0);
         vec2 push = vec2(0.0);
@@ -536,7 +536,7 @@ export const ParticleDepthPortrait: React.FC<ParticleDepthPortraitProps> = ({
         gl_Position = cp;
 
         float perspectiveScale = uCameraZ / max(-mvPosition.z, 50.0);
-        // Exact gather.be-of-dao.com micro-grain size & sub-pixel fade
+        // Micro-grain size & sub-pixel fade
         float sz = uPointSize * (0.6 + 0.9 * r3) * perspectiveScale * (1.0 - 0.45 * gone) * (1.0 + 0.5 * min(1.0, lit));
         float fade = min(1.0, sz / uMinPx);
         gl_PointSize = max(uMinPx, sz);
@@ -549,7 +549,7 @@ export const ParticleDepthPortrait: React.FC<ParticleDepthPortraitProps> = ({
         float nearShade = mix(0.55, 1.15, clamp(nearVal, 0.0, 1.0));
         float base = uGain * viewGainNorm * toneWeight * fade * fade * alive * uFade * home;
 
-        // Exact gather.be-of-dao.com light reflection equation:
+        // Light reflection equation:
         vec3 c = aCol * base * nearShade;
         c = c * (1.0 - 0.5 * uLampSum) + mix(aCol, uLampCol, 0.75) * base * lit * 2.7;
 
@@ -564,7 +564,7 @@ export const ParticleDepthPortrait: React.FC<ParticleDepthPortraitProps> = ({
         float d = length(gl_PointCoord * 2.0 - 1.0);
         if (d > 1.0) discard;
 
-        // Crisp sand-grain radial falloff matching gather.be-of-dao.com
+        // Crisp sand-grain radial falloff
         float a = smoothstep(1.0, 0.3, d);
         gl_FragColor = vec4(vCol * a, a);
       }
@@ -587,9 +587,9 @@ export const ParticleDepthPortrait: React.FC<ParticleDepthPortraitProps> = ({
     pointsMesh.visible = false; // Shown as soon as Hilbert-curve importance sampling completes
     portraitGroup.add(pointsMesh);
 
-    // ── HILBERT-CURVE IMPORTANCE SAMPLING (exact G(e) & W() from gather.be-of-dao.com) ──
+    // ── HILBERT-CURVE IMPORTANCE SAMPLING ──
     let startTime = performance.now();
-    let gatherProgress = 0;
+    let assemblyProgress = 0;
     let isReady = false;
 
     Promise.all([loadHtmlImage(imageSrc), loadHtmlImage(depthSrc)])
@@ -798,7 +798,7 @@ export const ParticleDepthPortrait: React.FC<ParticleDepthPortraitProps> = ({
             const lum = lumArr[cellIdx];
             const edgeGrad = edgeArr[cellIdx];
 
-            // Exact gather.be-of-dao.com sRGB shadow/midtone boost:
+            // sRGB shadow/midtone boost:
             // e = 1 + 0.85 * (min(1 / (0.1 + 0.9 * r), 1 / maxC) - 1)
             const maxC = Math.max(m0, m1, m2, 1.0 / 255.0);
             const boost = 1.0 + 0.85 * (Math.min(1.0 / (0.1 + 0.9 * lum), 1.0 / maxC) - 1.0);
@@ -854,14 +854,14 @@ export const ParticleDepthPortrait: React.FC<ParticleDepthPortraitProps> = ({
 
         pointsMesh.visible = true;
         startTime = performance.now();
-        gatherProgress = 0;
+        assemblyProgress = 0;
         isReady = true;
       })
       .catch((err) => {
         console.error('Failed to load particle portrait textures:', err);
       });
 
-    // ── INTERACTIVE 3D ORBIT, DRAG & POINTER WAKE (gather.be-of-dao.com's exact oe() & drag) ──
+    // ── INTERACTIVE 3D ORBIT, DRAG & POINTER WAKE ──
     let targetRotY = 0;
     let targetRotX = 0;
     let currentRotY = 0;
@@ -1083,14 +1083,14 @@ export const ParticleDepthPortrait: React.FC<ParticleDepthPortraitProps> = ({
       const elapsed = (now - startTime) / 1000;
       uniforms.uTime.value = elapsed;
 
-      if (isReady && gatherProgress < 1.0) {
-        gatherProgress = Math.min(1.0, gatherProgress + dt * 0.68);
-        const t = 1.0 - Math.pow(1.0 - gatherProgress, 3);
+      if (isReady && assemblyProgress < 1.0) {
+        assemblyProgress = Math.min(1.0, assemblyProgress + dt * 0.68);
+        const t = 1.0 - Math.pow(1.0 - assemblyProgress, 3);
         uniforms.uScatter.value = 1.0 - t;
         uniforms.uFade.value = Math.min(1.0, t * 1.2);
       }
 
-      // Update 6-slot pointer wake envelope (gather's ee())
+      // Update 6-slot pointer wake envelope
       const nowSec = now / 1000;
       for (let i = 0; i < 6; i++) {
         const w = wakeTrail[i];
@@ -1103,7 +1103,7 @@ export const ParticleDepthPortrait: React.FC<ParticleDepthPortraitProps> = ({
         }
       }
 
-      // Update 3-lamp bi-exponential snare envelopes (exact Dt(t) from gather.be-of-dao.com)
+      // Update 3-lamp bi-exponential snare envelopes
       let lampSum = 0;
       lamps.forEach((lamp) => {
         lamp.d *= Math.exp(-dt / 0.45);

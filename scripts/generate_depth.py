@@ -5,7 +5,7 @@ import onnxruntime as ort
 
 
 def boxblur(t: np.ndarray, w: int, h: int, rad: int) -> np.ndarray:
-    """2D separable box blur matching gather.be-of-dao.com's tt() helper."""
+    """2D separable box blur."""
     a = np.zeros((h, w), dtype=np.float32)
     res = np.zeros((h, w), dtype=np.float32)
     for y in range(h):
@@ -18,7 +18,7 @@ def boxblur(t: np.ndarray, w: int, h: int, rad: int) -> np.ndarray:
 
 
 def nt(arr: np.ndarray) -> np.ndarray:
-    """1st-to-99th percentile normalization matching gather.be-of-dao.com's nt()."""
+    """1st-to-99th percentile normalization."""
     p1 = np.percentile(arr, 1)
     p99 = np.percentile(arr, 99)
     return np.clip((arr - p1) / max(1e-6, p99 - p1), 0.0, 1.0)
@@ -30,7 +30,7 @@ def generate_depth(base_image_path: str, cutout_image_path: str, output_depth_pa
     img_cut = Image.open(cutout_image_path).convert('RGBA')
     orig_w, orig_h = img_base.size
 
-    # Work at gather's internal grid resolution first for guided filter & luminance relief
+    # Work at 1024 internal grid resolution first for guided filter & luminance relief
     r = 1024
     scale = r / max(orig_w, orig_h)
     a_w = round(orig_w * scale)
@@ -39,12 +39,12 @@ def generate_depth(base_image_path: str, cutout_image_path: str, output_depth_pa
     rgba = np.array(img_base.resize((a_w, r_h), Image.Resampling.BILINEAR)).astype(np.float32) / 255.0
     i_lum = 0.2126 * rgba[:, :, 0] + 0.7152 * rgba[:, :, 1] + 0.0722 * rgba[:, :, 2]
 
-    # 1. Multi-scale luminance relief rt() from gather.be-of-dao.com
+    # 1. Multi-scale luminance relief
     rad_rt = max(2, round(max(a_w, r_h) / 36))
     r_rt = boxblur(boxblur(i_lum, a_w, r_h, rad_rt), a_w, r_h, rad_rt)
     near_rt = nt(0.7 * r_rt + 0.3 * i_lum)
 
-    # 2. FastDepth 224x224 inference + Guided Image Filter it() from gather.be-of-dao.com
+    # 2. FastDepth 224x224 inference + Guided Image Filter
     d_img = img_base.convert('RGB').resize((224, 224), Image.Resampling.BILINEAR)
     inp = np.transpose(np.array(d_img).astype(np.float32) / 255.0, (2, 0, 1))[np.newaxis, :, :, :].astype(np.float32)
     sess = ort.InferenceSession(fastdepth_model_path, providers=['CPUExecutionProvider'])
@@ -73,7 +73,7 @@ def generate_depth(base_image_path: str, cutout_image_path: str, output_depth_pa
     B = np.array(Image.fromarray(boxblur(v_coeff, s, l, c)).resize((a_w, r_h), Image.Resampling.BILINEAR))
     near_it = nt(M * i_lum + B)
 
-    # 3. Blend 0.65 * near_it + 0.35 * near_rt (exact gather.be-of-dao.com formula on foreground)
+    # 3. Blend 0.65 * near_it + 0.35 * near_rt on foreground
     near_base = 0.65 * near_it + 0.35 * near_rt
 
     cut_small = np.array(img_cut.split()[3].resize((a_w, r_h), Image.Resampling.BILINEAR)).astype(np.float32) / 255.0
@@ -91,7 +91,7 @@ def generate_depth(base_image_path: str, cutout_image_path: str, output_depth_pa
     ) * np.clip((near_base - 0.28) / 0.45, 0.0, 1.0) * bg_weight
     near_final = np.clip(near_base + ribbon_wave, 0.0, 1.0)
 
-    # Edge gradient map (matching gather's _[a] = min(1, 3.5 * hypot(dx, dy)))
+    # Edge gradient map (_[a] = min(1, 3.5 * hypot(dx, dy)))
     gx = np.zeros_like(i_lum)
     gy = np.zeros_like(i_lum)
     gx[:, 1:-1] = i_lum[:, 2:] - i_lum[:, :-2]
@@ -116,10 +116,8 @@ def generate_depth(base_image_path: str, cutout_image_path: str, output_depth_pa
 
 
 if __name__ == '__main__':
-    script_dir = os.path.dirname(os.path.abspath(__file__))
-    client_dir = os.path.dirname(script_dir)
-    base_p = os.path.join(client_dir, 'public', 'portrait-base.png')
-    cut_p = os.path.join(client_dir, 'public', 'portrait-base-cutout.png')
-    out_p = os.path.join(client_dir, 'public', 'portrait-depth.png')
-    model_p = os.path.join(script_dir, 'models', 'fastdepth.onnx')
+    base_p = os.path.join('client', 'public', 'portrait-base.png')
+    cut_p = os.path.join('client', 'public', 'portrait-base-cutout.png')
+    out_p = os.path.join('client', 'public', 'portrait-depth.png')
+    model_p = os.path.join('scripts', 'models', 'fastdepth.onnx')
     generate_depth(base_p, cut_p, out_p, model_p)

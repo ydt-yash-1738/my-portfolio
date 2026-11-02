@@ -1,20 +1,20 @@
-# 3D Particle Depth, Hilbert-Curve Importance Sampling & Lamp Reflection Architecture (`Gather 聚` Inspired)
+# 3D Particle Depth, Hilbert-Curve Importance Sampling & Lamp Reflection Architecture
 
-This document details the end-to-end mathematical and rendering logic powering the 3D Particle Depth Portrait in [`ParticleDepthPortrait.tsx`](file:///d:/portfolio/client/src/components/ParticleDepthPortrait.tsx) and the offline depth-map pipeline in [`generate_depth.py`](file:///d:/portfolio/client/scripts/generate_depth.py), inspired by [gather.be-of-dao.com](https://gather.be-of-dao.com/).
+This document details the end-to-end mathematical and rendering logic powering the 3D Particle Depth Portrait in [`ParticleDepthPortrait.tsx`](file:///d:/portfolio/client/src/components/ParticleDepthPortrait.tsx) and the offline depth-map pipeline in [`generate_depth.py`](file:///d:/portfolio/client/scripts/generate_depth.py).
 
 ---
 
 ## 1. Root Causes of Previous Coarse Grains & Missing Facial Details
 
-When comparing the portfolio's previous particle portrait against `gather.be-of-dao.com`, five specific factors caused coarse blotches, oversaturated orange skin tones, and missing shadow/edge details:
+In earlier iterations of the particle portrait, five specific factors caused coarse blotches, oversaturated orange skin tones, and missing shadow/edge details:
 
 1. **WebGL2 Hardware sRGB-to-Linear Gamma Crushing (`tex.colorSpace = THREE.SRGBColorSpace`)**:
    - Uploading `uTexture` with `THREE.SRGBColorSpace` onto a raw `THREE.ShaderMaterial` caused WebGL2's `SRGB8_ALPHA8` sampler to apply $c^{2.2}$ linearization before the vertex shader's color boost, without any sRGB output re-encoding.
    - This crushed dark and midtone values (hair strands, eyebrow hairs, iris details, glasses rims, beard stubble, and hoodie folds) by up to $6\times$ into black, while distorting skin channel ratios $(R^{2.2} : G^{2.2} : B^{2.2})$ into oversaturated burnt orange-brown.
-   - In `gather.be-of-dao.com`, pixel colors are read directly in 8-bit **sRGB** space via 2D Canvas `getImageData` and boosted in sRGB space.
+   - In the optimized pipeline, pixel colors are read directly in 8-bit **sRGB** space via 2D Canvas `getImageData` and boosted in sRGB space.
 2. **Uniform Grid Waste vs. 2D Hilbert-Curve Importance Sampling (`W()` & `G(e)`)**:
    - A uniform `cols × rows` grid wasted ~60% of vertices on transparent cutout space (`gl_PointSize = 0.0`) and distributed the remaining points equally across flat regions and intricate facial features.
-   - `gather.be-of-dao.com` traverses a $1024 \times 1024$ grid along a **2D Hilbert space-filling curve** and allocates all $N = 524,288$ ($2^{19}$) particles proportionally to an importance weight $B[a]$ driven by luminance, local edge gradient, and depth relief.
+   - The system traverses a $1024 \times 1024$ grid along a **2D Hilbert space-filling curve** and allocates all $N = 524,288$ ($2^{19}$) particles proportionally to an importance weight $B[a]$ driven by luminance, local edge gradient, and depth relief.
 3. **Oversized `gl_PointSize` (`2.85` → `3.0–4.3px` blobs) vs. Sub-Pixel Micro-Grains (`~1.12–1.75px`)**:
    - Large overlapping points blurred adjacent features together and prevented sub-pixel `fade = min(1.0, sz / uMinPx)` attenuation from ever engaging.
 4. **Silhouette White-Backdrop Halo**:
@@ -39,7 +39,7 @@ where $\text{nt}(\cdot)$ normalizes between the 1st and 99th percentiles.
    $$w = \frac{\text{cov}(u, h)}{\text{var}(u) + 0.0015}, \quad v = \bar{h} - w \bar{u}, \quad \text{near}_{\text{it}} = \text{nt}(\bar{w} \cdot I + \bar{v})$$
 
 ### C. Pure Foreground Relief + Background Ribbon Wave
-Combines the guided neural depth and luminance relief in `gather.be-of-dao.com`'s exact ratio:
+Combines the guided neural depth and luminance relief in a tuned weighted ratio:
 $$\text{near}_{\text{base}} = 0.65 \cdot \text{near}_{\text{it}} + 0.35 \cdot \text{near}_{\text{rt}}$$
 The multi-harmonic spatial wave is masked by `bg_weight = 1.0 - clip(cut_alpha * 1.25, 0, 1)` so the foreground face remains 100% distortion-free while the background depth sheet forms an undulating organic ribbon when rotated to side profile.
 

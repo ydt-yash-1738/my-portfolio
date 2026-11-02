@@ -1,6 +1,6 @@
 /**
  * Pure In-Browser Non-Linear Guided Depth Map & AI Silhouette Segmentation Pipeline
- * Matching scripts/generate_depth.py and gather.be-of-dao.com architecture.
+ * Matching scripts/generate_depth.py architecture.
  *
  * Packs 4 channels:
  *   R: Non-linear blended depth relief (near_final)
@@ -72,7 +72,7 @@ function boxblur(t: Float32Array, w: number, h: number, rad: number): Float32Arr
   return res;
 }
 
-// 1st-to-99th percentile normalization matching gather.be-of-dao.com nt()
+// 1st-to-99th percentile normalization
 function nt(arr: Float32Array): Float32Array {
   const n = arr.length;
   const sampleSize = Math.min(n, 10000);
@@ -343,7 +343,7 @@ export async function generateUserPortraitDepth(
     }
   }
 
-  // 1. Multi-scale luminance relief rt() from gather.be-of-dao.com
+  // 1. Multi-scale luminance relief
   const radRt = Math.max(2, Math.round(Math.max(targetW, targetH) / 36));
   const rRt = boxblur(boxblur(lum, targetW, targetH, radRt), targetW, targetH, radRt);
   const nearRt = nt(
@@ -442,7 +442,7 @@ export async function generateUserPortraitDepth(
     }
   }
 
-  // 6. Background Ribbon Wave (gather.be-of-dao.com)
+  // 6. Background Ribbon Wave
   const nearFinal = new Float32Array(totalPixels);
   for (let y = 0; y < targetH; y++) {
     const uy = 1.0 - y / targetH;
