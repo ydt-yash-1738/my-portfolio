@@ -48,7 +48,7 @@ const TECH_STACK: TechItem[] = [
     accent: '#009688',
   },
   {
-    name: 'Full Stack',
+    name: 'Systems Architecture',
     category: 'END-TO-END ENGINEERING',
     description: 'Complete product lifecycle from database modeling and API design to pixel-accurate frontend UI.',
     icon: <Layers size={20} />,
@@ -97,7 +97,7 @@ const PROJECTS: ProjectItem[] = [
     status: 'LIVE PRODUCTION',
     description:
       'Production healthcare and aesthetic surgery digital platform engineered for fast load performance, responsive clinical presentation, SEO visibility, and streamlined patient inquiries.',
-    tags: ['Full Stack', 'ReactJS', 'Responsive UI', 'Production'],
+    tags: ['Web Application', 'ReactJS', 'Responsive UI', 'Production'],
     isLive: true,
   },
   {
@@ -113,18 +113,18 @@ const PROJECTS: ProjectItem[] = [
   },
   {
     index: '03',
-    title: 'Upcoming Client & Cloud Builds',
+    title: 'Upcoming Systems & Cloud Builds',
     domain: 'More Undergoing',
     url: '#projects',
     status: 'IN DEVELOPMENT',
     description:
-      'Multiple freelance and full-stack platforms currently under active development—spanning FastAPI backends, Azure cloud deployments, and CosmosDB / PostgreSQL data architectures.',
+      'Cooking...',
     tags: ['FastAPI', 'Azure', 'CosmosDB', 'PostgreSQL'],
     isLive: false,
   },
 ];
 
-const FLIP_WORDS = ['REACTJS', 'NODEJS', 'FASTAPI', 'FULL STACK', 'AZURE CLOUD', 'CI/CD', 'COSMOSDB', 'MONGODB', 'POSTGRESQL'];
+const FLIP_WORDS = ['REACTJS', 'NODEJS', 'FASTAPI', 'SYSTEMS ARCH', 'AZURE CLOUD', 'CI/CD', 'COSMOSDB', 'MONGODB', 'POSTGRESQL'];
 
 const FLOWS: string[][] = [
   ['VISITOR', 'CDN', 'REACT UI', 'API'],
@@ -387,8 +387,7 @@ const unmagnet = (e: React.MouseEvent<HTMLElement>) => {
 };
 
 const HEADLINE: { w: string; accent?: boolean }[] = [
-  ...'Full-Stack Engineer &'.split(' ').map((w) => ({ w })),
-  ...'Freelance Developer'.split(' ').map((w) => ({ w, accent: true })),
+  ...'Independent Developer'.split(' ').map((w) => ({ w, accent: true })),
   ...'building high-velocity web platforms and cloud-native backends.'.split(' ').map((w) => ({ w })),
 ];
 
@@ -722,12 +721,12 @@ export const BioSection: React.FC = () => {
               <span className="section-index">01 // ABOUT & BIO</span>
               <div className="freelance-status-pill" onMouseMove={(e) => magnet(e, 0.3)} onMouseLeave={unmagnet}>
                 <span className="live-dot" />
-                <span>AVAILABLE FOR FREELANCE</span>
+                <span>BUILDING INDEPENDENTLY</span>
               </div>
             </div>
 
             <div className="bio-narrative-col">
-              <h2 className="bio-headline reveal-on-scroll" aria-label="Full-Stack Engineer & Freelance Developer building high-velocity web platforms and cloud-native backends.">
+              <h2 className="bio-headline reveal-on-scroll" aria-label="Independent Developer building high-velocity web platforms and cloud-native backends.">
                 {HEADLINE.map((h, i) => (
                   <React.Fragment key={i}>
                     <span className="word-mask" aria-hidden="true">
@@ -747,14 +746,14 @@ export const BioSection: React.FC = () => {
                 I architect and ship complete digital products from the ground up—combining
                 responsive {kw(0)} frontends with high-throughput {kw(1)} and {kw(2)}{' '}
                 services, automated {kw(3)} delivery on {kw(4)}, and resilient data layers
-                across {kw(5)}, {kw(6)}, and {kw(7)}. Alongside core engineering, I partner
-                directly with businesses as a freelance developer to deliver production websites
+                across {kw(5)}, {kw(6)}, and {kw(7)}. Alongside core engineering, I build
+                and ship software independently to deliver production systems
                 that perform at scale.
               </p>
 
               <div className="bio-metrics-row reveal-on-scroll">
                 <div className={`metric-box ${metricPulse === 0 ? 'is-auto' : ''}`} onMouseMove={(e) => trackPointer(e)}>
-                  <span className="metric-val"><ScrambleText text="FULL-STACK" active={metricPulse === 0} /></span>
+                  <span className="metric-val"><ScrambleText text="END-TO-END" active={metricPulse === 0} /></span>
                   <span className="metric-lbl">UI to Cloud Infrastructure</span>
                 </div>
                 <div className={`metric-box ${metricPulse === 1 ? 'is-auto' : ''}`} onMouseMove={(e) => trackPointer(e)}>
@@ -762,8 +761,8 @@ export const BioSection: React.FC = () => {
                   <span className="metric-lbl">Automated Cloud Delivery</span>
                 </div>
                 <div className={`metric-box ${metricPulse === 2 ? 'is-auto' : ''}`} onMouseMove={(e) => trackPointer(e)}>
-                  <span className="metric-val"><ScrambleText text="FREELANCE" active={metricPulse === 2} /></span>
-                  <span className="metric-lbl">Production Client Platforms</span>
+                  <span className="metric-val"><ScrambleText text="INDEPENDENT" active={metricPulse === 2} /></span>
+                  <span className="metric-lbl">Production Software &amp; Builds</span>
                 </div>
               </div>
             </div>
@@ -827,11 +826,11 @@ export const BioSection: React.FC = () => {
           <div id="projects" className="projects-block">
             <div className="block-title-row reveal-on-scroll">
               <div>
-                <span className="section-index">03 // FREELANCE &amp; PRODUCTION</span>
+                <span className="section-index">03 // SELECTED PROJECTS</span>
                 <h3 className="block-heading">SELECTED WORKS</h3>
               </div>
               <p className="block-caption">
-                Shipped client platforms &amp; ongoing full-stack engineering builds.
+                Shipped production platforms &amp; ongoing independent engineering builds.
               </p>
             </div>
 
@@ -911,7 +910,7 @@ export const BioSection: React.FC = () => {
             <div className="footer-left">
               <span className="footer-brand">YASH</span>
               <span className="footer-copy">
-                Full-Stack Developer &amp; Freelance Engineer
+                Software Engineer &amp; Independent Developer
               </span>
             </div>
             <div className="footer-right">

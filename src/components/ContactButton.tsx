@@ -4,6 +4,46 @@ import { ArrowUpRight, Check, Copy, Mail, Phone, X } from 'lucide-react';
 const EMAIL = 'yashdt50@gmail.com';
 const PHONE_DISPLAY = '+91 63931 15243';
 const PHONE_RAW = '+916393115243';
+const LINKEDIN_URL = 'https://www.linkedin.com/in/ydt1738/';
+const LINKEDIN_DISPLAY = 'in/ydt1738';
+const INSTAGRAM_URL = 'https://www.instagram.com/_its_yoda_/';
+const INSTAGRAM_DISPLAY = '@_its_yoda_';
+
+const LinkedinIcon: React.FC<{ size?: number }> = ({ size = 18 }) => (
+  <svg
+    width={size}
+    height={size}
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    aria-hidden="true"
+  >
+    <path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z" />
+    <rect x="2" y="9" width="4" height="12" />
+    <circle cx="4" cy="4" r="2" />
+  </svg>
+);
+
+const InstagramIcon: React.FC<{ size?: number }> = ({ size = 18 }) => (
+  <svg
+    width={size}
+    height={size}
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    aria-hidden="true"
+  >
+    <rect x="2" y="2" width="20" height="20" rx="5" ry="5" />
+    <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z" />
+    <line x1="17.5" y1="6.5" x2="17.51" y2="6.5" />
+  </svg>
+);
 
 /** Any element can open the modal with: window.dispatchEvent(new Event('open-contact')) */
 export const ContactButton: React.FC = () => {
@@ -75,7 +115,7 @@ export const ContactButton: React.FC = () => {
           <h3 className="contact-title">
             Let&apos;s build something <span className="accent-red">together.</span>
           </h3>
-          <p className="contact-sub">Available for freelance projects and full-stack roles. Typically replies within a day.</p>
+          <p className="contact-sub">Open to engineering opportunities and technical collaborations. Typically replies within a day.</p>
 
           <div className="contact-rows">
             <div className="contact-row">
@@ -115,6 +155,58 @@ export const ContactButton: React.FC = () => {
                 tabIndex={open ? 0 : -1}
               >
                 {copied === 'phone' ? <Check size={16} /> : <Copy size={16} />}
+              </button>
+            </div>
+
+            <div className="contact-row">
+              <a
+                className="contact-link"
+                href={LINKEDIN_URL}
+                target="_blank"
+                rel="noreferrer"
+                tabIndex={open ? 0 : -1}
+              >
+                <span className="contact-icon"><LinkedinIcon size={18} /></span>
+                <span className="contact-text">
+                  <span className="contact-label">LINKEDIN</span>
+                  <span className="contact-value">{LINKEDIN_DISPLAY}</span>
+                </span>
+                <ArrowUpRight size={18} className="contact-arrow" />
+              </a>
+              <button
+                type="button"
+                className="contact-copy"
+                onClick={() => copy('linkedin', LINKEDIN_URL)}
+                aria-label="Copy LinkedIn link"
+                tabIndex={open ? 0 : -1}
+              >
+                {copied === 'linkedin' ? <Check size={16} /> : <Copy size={16} />}
+              </button>
+            </div>
+
+            <div className="contact-row">
+              <a
+                className="contact-link"
+                href={INSTAGRAM_URL}
+                target="_blank"
+                rel="noreferrer"
+                tabIndex={open ? 0 : -1}
+              >
+                <span className="contact-icon"><InstagramIcon size={18} /></span>
+                <span className="contact-text">
+                  <span className="contact-label">INSTAGRAM</span>
+                  <span className="contact-value">{INSTAGRAM_DISPLAY}</span>
+                </span>
+                <ArrowUpRight size={18} className="contact-arrow" />
+              </a>
+              <button
+                type="button"
+                className="contact-copy"
+                onClick={() => copy('instagram', INSTAGRAM_URL)}
+                aria-label="Copy Instagram link"
+                tabIndex={open ? 0 : -1}
+              >
+                {copied === 'instagram' ? <Check size={16} /> : <Copy size={16} />}
               </button>
             </div>
           </div>

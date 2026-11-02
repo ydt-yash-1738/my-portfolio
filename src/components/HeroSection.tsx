@@ -204,7 +204,7 @@ export const HeroSection: React.FC = () => {
           {/* Left Side */}
           <div className="hero-side hero-side-left">
             <div className="hero-editorial-block">
-              <span className="hero-eyebrow">01 // FULL-STACK ENGINEER</span>
+              <span className="hero-eyebrow">01 // INDEPENDENT DEVELOPER</span>
               <h1 className="hero-side-title">
                 CREATIVE DEV
                 <br />
@@ -212,20 +212,20 @@ export const HeroSection: React.FC = () => {
               </h1>
               <p className="hero-side-desc">
                 Building high-performance web applications, cloud infrastructure &amp;
-                production client platforms.
+                scalable production systems.
               </p>
             </div>
 
             {/* Lando Norris-inspired lower-left technical badge card */}
             <div className="hero-spec-card">
-              <div className="spec-card-header">FREELANCE &amp; CORE</div>
+              <div className="spec-card-header">ENGINEERING &amp; PROJECTS</div>
               <div className="spec-card-body">
                 <div className="spec-stack-line">REACT • NODE • FASTAPI</div>
                 <div className="spec-divider" />
                 <div className="spec-sub">
                   AZURE CLOUD &amp; CI/CD
                   <br />
-                  FULL-STACK SYSTEMS
+                  PRODUCTION SYSTEMS
                 </div>
               </div>
             </div>

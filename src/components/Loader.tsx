@@ -116,7 +116,7 @@ export const Loader: React.FC = () => {
         </div>
         <div className="loader-bottom">
           <span>LOADING PORTFOLIO</span>
-          <span>FULL-STACK // FREELANCE</span>
+          <span>INDEPENDENT DEVELOPER</span>
         </div>
       </div>
     </div>
