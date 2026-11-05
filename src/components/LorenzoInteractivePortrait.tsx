@@ -792,8 +792,8 @@ export const LorenzoInteractivePortrait: React.FC<LorenzoInteractivePortraitProp
 
       const handleResize = () => {
         if (!container) return;
-        const newWidth = container.clientWidth;
-        const newHeight = container.clientHeight;
+        const newWidth = container.clientWidth || window.innerWidth;
+        const newHeight = container.clientHeight || window.innerHeight;
         if (newWidth === 0 || newHeight === 0) return;
 
         camera.aspect = newWidth / newHeight;
@@ -817,10 +817,16 @@ export const LorenzoInteractivePortrait: React.FC<LorenzoInteractivePortraitProp
         }
       };
 
+      const ro = new ResizeObserver(() => {
+        handleResize();
+      });
+      ro.observe(container);
+
       window.addEventListener('resize', handleResize);
 
       cleanupRef.current = () => {
         clearTimeout(timerId);
+        ro.disconnect();
         window.removeEventListener('resize', handleResize);
         cancelAnimationFrame(animationId);
 

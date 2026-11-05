@@ -1146,8 +1146,8 @@ export const ParticleDepthPortrait: React.FC<ParticleDepthPortraitProps> = ({
     // ── RESIZE HANDLER ──
     const handleResize = () => {
       if (!container || !renderer) return;
-      const newW = container.clientWidth;
-      const newH = container.clientHeight;
+      const newW = container.clientWidth || window.innerWidth;
+      const newH = container.clientHeight || window.innerHeight;
       if (newW === 0 || newH === 0) return;
 
       const curDpr = Math.min(window.devicePixelRatio || 1, 2);
@@ -1183,10 +1183,16 @@ export const ParticleDepthPortrait: React.FC<ParticleDepthPortraitProps> = ({
       renderer.setSize(newW, newH);
     };
 
+    const ro = new ResizeObserver(() => {
+      handleResize();
+    });
+    ro.observe(container);
+
     window.addEventListener('resize', handleResize);
 
     return () => {
       disposed = true;
+      ro.disconnect();
       cancelAnimationFrame(animFrameId);
       window.removeEventListener('pointerdown', handlePointerDown);
       window.removeEventListener('pointermove', handlePointerMove);

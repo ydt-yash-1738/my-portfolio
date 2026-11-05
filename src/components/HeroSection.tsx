@@ -1,4 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
+import gsap from 'gsap';
+import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import { Lock, LockOpen, Sparkles, Image as ImageIcon, SunMedium, Zap, RotateCcw, Upload } from 'lucide-react';
 import LorenzoInteractivePortrait from './LorenzoInteractivePortrait';
 import ParticleDepthPortrait from './ParticleDepthPortrait';
@@ -17,6 +19,113 @@ export const HeroSection: React.FC = () => {
   const [generationError, setGenerationError] = useState<string | null>(null);
 
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const heroWrapperRef = useRef<HTMLDivElement | null>(null);
+  const heroStageRef = useRef<HTMLElement | null>(null);
+  const sideLeftRef = useRef<HTMLDivElement | null>(null);
+  const sideRightRef = useRef<HTMLDivElement | null>(null);
+  const topActionsRef = useRef<HTMLDivElement | null>(null);
+  const bottomControlsRef = useRef<HTMLDivElement | null>(null);
+  const tryYourselfRef = useRef<HTMLDivElement | null>(null);
+
+  // Parallax scroll animation: pin hero stage and smoothly scale down & vanish into about/bio
+  useEffect(() => {
+    gsap.registerPlugin(ScrollTrigger);
+
+    const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (reduce) return;
+
+    const wrapper = heroWrapperRef.current;
+    const stage = heroStageRef.current;
+    if (!wrapper || !stage) return;
+
+    const mm = gsap.matchMedia();
+
+    mm.add(
+      {
+        isDesktop: '(min-width: 769px)',
+        isMobile: '(max-width: 768px)',
+      },
+      (context) => {
+        const { isDesktop } = context.conditions as { isDesktop: boolean; isMobile: boolean };
+
+        const tl = gsap.timeline({
+          scrollTrigger: {
+            trigger: wrapper,
+            start: 'top top',
+            end: 'bottom top',
+            scrub: 0.6,
+            invalidateOnRefresh: true,
+          },
+        });
+
+        // 1. Hero stage smoothly scales down, corners round, drops shadow, shifts slightly upward, and vanishes
+        tl.to(
+          stage,
+          {
+            scale: isDesktop ? 0.76 : 0.84,
+            opacity: 0,
+            yPercent: isDesktop ? -8 : -4,
+            borderRadius: isDesktop ? '32px' : '22px',
+            boxShadow: '0 30px 100px rgba(0, 0, 0, 0.7)',
+            filter: 'blur(3px)',
+            ease: 'power1.inOut',
+          },
+          0
+        );
+
+        // Set pointer-events to none once partially faded so clicks pass seamlessly to Bio
+        tl.set(stage, { pointerEvents: 'none' }, 0.55);
+
+        // 2. Editorial side overlays drift out and fade faster to create layered parallax depth
+        if (sideLeftRef.current) {
+          tl.to(
+            sideLeftRef.current,
+            {
+              x: isDesktop ? -70 : -30,
+              opacity: 0,
+              ease: 'power1.out',
+            },
+            0
+          );
+        }
+
+        if (sideRightRef.current) {
+          tl.to(
+            sideRightRef.current,
+            {
+              x: isDesktop ? 70 : 30,
+              opacity: 0,
+              ease: 'power1.out',
+            },
+            0
+          );
+        }
+
+        // 3. Top actions, bottom controls, and try-yourself button fade quickly
+        const fades = [topActionsRef.current, bottomControlsRef.current, tryYourselfRef.current].filter(Boolean);
+        if (fades.length > 0) {
+          tl.to(
+            fades,
+            {
+              opacity: 0,
+              y: -15,
+              ease: 'power1.out',
+            },
+            0
+          );
+        }
+      }
+    );
+
+    const rafId = requestAnimationFrame(() => {
+      ScrollTrigger.refresh();
+    });
+
+    return () => {
+      cancelAnimationFrame(rafId);
+      mm.revert();
+    };
+  }, []);
 
   // Effective lock state: locked if manually toggled, OR automatically whenever custom portrait is active in 3D mode
   const isLockedEffective = locked || (isParticleMode && Boolean(customPortrait));
@@ -121,11 +230,7 @@ export const HeroSection: React.FC = () => {
   const hidePortfolioText = isParticleMode && Boolean(customPortrait);
 
   return (
-    <section
-      className={`hero-stage ${isLockedEffective ? 'is-locked' : ''} ${isParticleMode ? 'is-particle-mode' : ''} ${
-        hidePortfolioText ? 'has-custom-portrait' : ''
-      }`}
-    >
+    <div ref={heroWrapperRef} className="hero-scroll-wrapper">
       {/* ── NAVBAR (NAME ON LEFT, HIDDEN ONLY IN 3D CUSTOM USER MODE) ── */}
       {!hidePortfolioText && (
         <nav className="minimal-navbar">
@@ -135,225 +240,232 @@ export const HeroSection: React.FC = () => {
         </nav>
       )}
 
-      {/* ── TOP RIGHT: 3D PARTICLE DEPTH & LIGHT ACTION BUTTONS ── */}
-      <div className="hero-top-actions">
-        {isParticleMode && (
-          <button
-            type="button"
-            className="hero-light-btn"
-            onClick={() => window.dispatchEvent(new CustomEvent('trigger-node-flash'))}
-            title="Flash Scene Lighting & Telemetry Sensors"
-            aria-label="Flash Light"
-          >
-            <SunMedium size={14} className="light-icon" />
-            <span>LIGHT</span>
-          </button>
-        )}
-
-        <button
-          type="button"
-          className={`hero-particle-toggle ${isParticleMode ? 'is-active' : ''}`}
-          onClick={() => {
-            setIsParticleMode((v) => !v);
-            setLocked(false);
-          }}
-          aria-pressed={isParticleMode}
-          title={isParticleMode ? 'Return to 2D portrait' : 'Explore 3D Particle Depth'}
-        >
-          {isParticleMode ? (
-            <>
-              <ImageIcon size={14} className="particle-toggle-icon" />
-              <span>2D VIEW</span>
-            </>
-          ) : (
-            <>
-              <Sparkles size={14} className="particle-toggle-icon" />
-              <span>GOING DARK</span>
-            </>
-          )}
-        </button>
-      </div>
-
-      {/* ── CANVAS LAYER: EITHER 2D INTERACTIVE REVEAL OR 3D PARTICLE DEPTH ── */}
-      <div className="hero-canvas-layer">
-        {isParticleMode ? (
-          <ParticleDepthPortrait
-            imageSrc={customPortrait ? customPortrait.imageSrc : "/portrait-base-cutout.png"}
-            depthSrc={customPortrait ? customPortrait.depthSrc : "/portrait-depth.png"}
-            titleTag={customPortrait ? "USER //" : "X"}
-            onClose={() => setIsParticleMode(false)}
-            isLocked={isLockedEffective}
-          />
-        ) : (
-          <LorenzoInteractivePortrait
-            baseImageUrl="/portrait-base-cutout.png"
-            revealImageUrl="/marquez-reveal-4k.png"
-            backgroundColor="#FFFFFF"
-            blobRadius={0.15}
-            blobFadeSpeed={0.9}
-            colorBgVec3="1.0, 1.0, 1.0"
-            colorSoftShapeVec3="0.961, 0.961, 0.961"
-            colorLineVec3="0.89, 0.89, 0.89"
-          />
-        )}
-      </div>
-
-      {/* ── LEFT & RIGHT SIDE EDITORIAL HERO TEXT (HIDDEN ONLY IN 3D CUSTOM USER MODE) ── */}
-      {!hidePortfolioText && (
-        <div className="hero-side-overlays" aria-hidden="false">
-          {/* Left Side */}
-          <div className="hero-side hero-side-left">
-            <div className="hero-editorial-block">
-              <span className="hero-eyebrow">01 // INDEPENDENT DEVELOPER</span>
-              <h1 className="hero-side-title">
-                CREATIVE DEV
-                <br />
-                &amp; ARCHITECT
-              </h1>
-              <p className="hero-side-desc">
-                Building high-performance web applications, cloud infrastructure &amp;
-                scalable production systems.
-              </p>
-            </div>
-
-            {/* Lando Norris-inspired lower-left technical badge card */}
-            <div className="hero-spec-card">
-              <div className="spec-card-header">ENGINEERING &amp; PROJECTS</div>
-              <div className="spec-card-body">
-                <div className="spec-stack-line">REACT • NODE • FASTAPI</div>
-                <div className="spec-divider" />
-                <div className="spec-sub">
-                  AZURE CLOUD &amp; CI/CD
-                  <br />
-                  PRODUCTION SYSTEMS
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Right Side */}
-          <div className="hero-side hero-side-right">
-            <div className="hero-editorial-block align-right">
-              <span className="hero-eyebrow">02 // DATA &amp; CLOUD</span>
-              <h2 className="hero-side-title">
-                SCALABLE
-                <br />
-                SYSTEMS
-              </h2>
-              <p className="hero-side-desc">
-                CosmosDB • MongoDB • PostgreSQL
-                <br />
-                End-to-end production delivery.
-              </p>
-            </div>
-
-            {/* Bottom hint or cue */}
-            <div className="hero-scroll-cue">
-              {isParticleMode ? (
-                <>
-                  <span className="scroll-cue-text particle-cue-text">
-                    {locked ? 'DRAG TO ROTATE 3D' : 'DRAG TO ROTATE · SCROLL FOR BIO'}
-                  </span>
-                  {!locked && <span className="scroll-cue-line" />}
-                </>
-              ) : (
-                <>
-                  <span className="scroll-cue-text">SCROLL FOR BIO &amp; WORKS</span>
-                  <span className="scroll-cue-line" />
-                </>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Mobile-only bottom controls: Lock toggle and 3D Particle Lightning action */}
-      <div className="hero-bottom-controls">
-        <button
-          type="button"
-          className={`hero-lock-btn ${isLockedEffective ? 'is-locked' : ''}`}
-          onClick={() => setLocked((v) => !v)}
-          aria-pressed={isLockedEffective}
-          aria-label={isLockedEffective ? 'Unlock scrolling' : 'Lock hero to interact'}
-        >
-          {isLockedEffective ? <Lock size={14} /> : <LockOpen size={14} />}
-          <span>{isLockedEffective ? 'LOCKED' : 'LOCK'}</span>
-        </button>
-
-        {isParticleMode && (
-          <button
-            type="button"
-            className="hero-mobile-light-btn"
-            onClick={() => window.dispatchEvent(new CustomEvent('trigger-node-flash'))}
-            title="Flash Scene Lighting & Telemetry Sensors"
-            aria-label="Flash Lighting"
-          >
-            <Zap size={14} className="mobile-light-icon" />
-          </button>
-        )}
-      </div>
-
-      {/* ── BOTTOM RIGHT: "TRY YOURSELF" / USER UPLOAD PORTRAIT ACTION (ONLY IN 3D PARTICLE MODE) ── */}
-      {isParticleMode && (
-        <div className="hero-try-yourself-container">
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept="image/png,image/jpeg,image/jpg,image/webp"
-            style={{ display: 'none' }}
-            onChange={handleFileChange}
-          />
-
-          {isGenerating ? (
-            <div className="hero-try-generating-badge" aria-live="polite">
-              <span className="try-generating-spinner" />
-              <span className="try-generating-text">
-                {generationStatus || 'COMPUTING 3D DEPTH...'}
-              </span>
-            </div>
-          ) : customPortrait ? (
-            <div className="hero-custom-actions">
-              <button
-                type="button"
-                className="hero-try-btn is-custom"
-                onClick={handleTryYourselfClick}
-                title="Upload another portrait from gallery or files"
-              >
-                <Upload size={13} className="try-sparkle-icon" />
-                <span className="try-custom-text-full">TRY ANOTHER</span>
-                <span className="try-custom-text-mobile">ANOTHER</span>
-              </button>
-              <button
-                type="button"
-                className="hero-reset-portrait-btn"
-                onClick={handleResetPortrait}
-                title="Reset to Yash original 3D portrait"
-                aria-label="Reset portrait"
-              >
-                <RotateCcw size={13} className="reset-icon" />
-                <span className="reset-btn-text">RESET</span>
-              </button>
-            </div>
-          ) : (
+      <section
+        ref={heroStageRef}
+        className={`hero-stage ${isLockedEffective ? 'is-locked' : ''} ${isParticleMode ? 'is-particle-mode' : ''} ${
+          hidePortfolioText ? 'has-custom-portrait' : ''
+        }`}
+      >
+        {/* ── TOP RIGHT: 3D PARTICLE DEPTH & LIGHT ACTION BUTTONS ── */}
+        <div ref={topActionsRef} className="hero-top-actions">
+          {isParticleMode && (
             <button
               type="button"
-              className="hero-try-btn"
-              onClick={handleTryYourselfClick}
-              title="Upload your own photo to generate a 3D Sand Particle Depth Portrait"
+              className="hero-light-btn"
+              onClick={() => window.dispatchEvent(new CustomEvent('trigger-node-flash'))}
+              title="Flash Scene Lighting & Telemetry Sensors"
+              aria-label="Flash Light"
             >
-              <Sparkles size={14} className="try-sparkle-icon" />
-              <span>TRY YOURSELF</span>
+              <SunMedium size={14} className="light-icon" />
+              <span>LIGHT</span>
             </button>
           )}
 
-          {generationError && (
-            <div className="hero-try-error-toast" onClick={() => setGenerationError(null)}>
-              <span>{generationError}</span>
-            </div>
+          <button
+            type="button"
+            className={`hero-particle-toggle ${isParticleMode ? 'is-active' : ''}`}
+            onClick={() => {
+              setIsParticleMode((v) => !v);
+              setLocked(false);
+            }}
+            aria-pressed={isParticleMode}
+            title={isParticleMode ? 'Return to 2D portrait' : 'Explore 3D Particle Depth'}
+          >
+            {isParticleMode ? (
+              <>
+                <ImageIcon size={14} className="particle-toggle-icon" />
+                <span>2D VIEW</span>
+              </>
+            ) : (
+              <>
+                <Sparkles size={14} className="particle-toggle-icon" />
+                <span>GOING DARK</span>
+              </>
+            )}
+          </button>
+        </div>
+
+        {/* ── CANVAS LAYER: EITHER 2D INTERACTIVE REVEAL OR 3D PARTICLE DEPTH ── */}
+        <div className="hero-canvas-layer">
+          {isParticleMode ? (
+            <ParticleDepthPortrait
+              imageSrc={customPortrait ? customPortrait.imageSrc : "/portrait-base-cutout.png"}
+              depthSrc={customPortrait ? customPortrait.depthSrc : "/portrait-depth.png"}
+              titleTag={customPortrait ? "USER //" : "X"}
+              onClose={() => setIsParticleMode(false)}
+              isLocked={isLockedEffective}
+            />
+          ) : (
+            <LorenzoInteractivePortrait
+              baseImageUrl="/portrait-base-cutout.png"
+              revealImageUrl="/marquez-reveal-4k.png"
+              backgroundColor="#FFFFFF"
+              blobRadius={0.15}
+              blobFadeSpeed={0.9}
+              colorBgVec3="1.0, 1.0, 1.0"
+              colorSoftShapeVec3="0.961, 0.961, 0.961"
+              colorLineVec3="0.89, 0.89, 0.89"
+            />
           )}
         </div>
-      )}
-    </section>
+
+        {/* ── LEFT & RIGHT SIDE EDITORIAL HERO TEXT (HIDDEN ONLY IN 3D CUSTOM USER MODE) ── */}
+        {!hidePortfolioText && (
+          <div className="hero-side-overlays" aria-hidden="false">
+            {/* Left Side */}
+            <div ref={sideLeftRef} className="hero-side hero-side-left">
+              <div className="hero-editorial-block">
+                <span className="hero-eyebrow">01 // INDEPENDENT DEVELOPER</span>
+                <h1 className="hero-side-title">
+                  CREATIVE DEV
+                  <br />
+                  &amp; ARCHITECT
+                </h1>
+                <p className="hero-side-desc">
+                  Building high-performance web applications, cloud infrastructure &amp;
+                  scalable production systems.
+                </p>
+              </div>
+
+              {/* Lando Norris-inspired lower-left technical badge card */}
+              <div className="hero-spec-card">
+                <div className="spec-card-header">ENGINEERING &amp; PROJECTS</div>
+                <div className="spec-card-body">
+                  <div className="spec-stack-line">REACT • NODE • FASTAPI</div>
+                  <div className="spec-divider" />
+                  <div className="spec-sub">
+                    AZURE CLOUD &amp; CI/CD
+                    <br />
+                    PRODUCTION SYSTEMS
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Right Side */}
+            <div ref={sideRightRef} className="hero-side hero-side-right">
+              <div className="hero-editorial-block align-right">
+                <span className="hero-eyebrow">02 // DATA &amp; CLOUD</span>
+                <h2 className="hero-side-title">
+                  SCALABLE
+                  <br />
+                  SYSTEMS
+                </h2>
+                <p className="hero-side-desc">
+                  CosmosDB • MongoDB • PostgreSQL
+                  <br />
+                  End-to-end production delivery.
+                </p>
+              </div>
+
+              {/* Bottom hint or cue */}
+              <div className="hero-scroll-cue">
+                {isParticleMode ? (
+                  <>
+                    <span className="scroll-cue-text particle-cue-text">
+                      {locked ? 'DRAG TO ROTATE 3D' : 'DRAG TO ROTATE · SCROLL FOR BIO'}
+                    </span>
+                    {!locked && <span className="scroll-cue-line" />}
+                  </>
+                ) : (
+                  <>
+                    <span className="scroll-cue-text">SCROLL FOR BIO &amp; WORKS</span>
+                    <span className="scroll-cue-line" />
+                  </>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Mobile-only bottom controls: Lock toggle and 3D Particle Lightning action */}
+        <div ref={bottomControlsRef} className="hero-bottom-controls">
+          <button
+            type="button"
+            className={`hero-lock-btn ${isLockedEffective ? 'is-locked' : ''}`}
+            onClick={() => setLocked((v) => !v)}
+            aria-pressed={isLockedEffective}
+            aria-label={isLockedEffective ? 'Unlock scrolling' : 'Lock hero to interact'}
+          >
+            {isLockedEffective ? <Lock size={14} /> : <LockOpen size={14} />}
+            <span>{isLockedEffective ? 'LOCKED' : 'LOCK'}</span>
+          </button>
+
+          {isParticleMode && (
+            <button
+              type="button"
+              className="hero-mobile-light-btn"
+              onClick={() => window.dispatchEvent(new CustomEvent('trigger-node-flash'))}
+              title="Flash Scene Lighting & Telemetry Sensors"
+              aria-label="Flash Lighting"
+            >
+              <Zap size={14} className="mobile-light-icon" />
+            </button>
+          )}
+        </div>
+
+        {/* ── BOTTOM RIGHT: "TRY YOURSELF" / USER UPLOAD PORTRAIT ACTION (ONLY IN 3D PARTICLE MODE) ── */}
+        {isParticleMode && (
+          <div ref={tryYourselfRef} className="hero-try-yourself-container">
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/png,image/jpeg,image/jpg,image/webp"
+              style={{ display: 'none' }}
+              onChange={handleFileChange}
+            />
+
+            {isGenerating ? (
+              <div className="hero-try-generating-badge" aria-live="polite">
+                <span className="try-generating-spinner" />
+                <span className="try-generating-text">
+                  {generationStatus || 'COMPUTING 3D DEPTH...'}
+                </span>
+              </div>
+            ) : customPortrait ? (
+              <div className="hero-custom-actions">
+                <button
+                  type="button"
+                  className="hero-try-btn is-custom"
+                  onClick={handleTryYourselfClick}
+                  title="Upload another portrait from gallery or files"
+                >
+                  <Upload size={13} className="try-sparkle-icon" />
+                  <span className="try-custom-text-full">TRY ANOTHER</span>
+                  <span className="try-custom-text-mobile">ANOTHER</span>
+                </button>
+                <button
+                  type="button"
+                  className="hero-reset-portrait-btn"
+                  onClick={handleResetPortrait}
+                  title="Reset to Yash original 3D portrait"
+                  aria-label="Reset portrait"
+                >
+                  <RotateCcw size={13} className="reset-icon" />
+                  <span className="reset-btn-text">RESET</span>
+                </button>
+              </div>
+            ) : (
+              <button
+                type="button"
+                className="hero-try-btn"
+                onClick={handleTryYourselfClick}
+                title="Upload your own photo to generate a 3D Sand Particle Depth Portrait"
+              >
+                <Sparkles size={14} className="try-sparkle-icon" />
+                <span>TRY YOURSELF</span>
+              </button>
+            )}
+
+            {generationError && (
+              <div className="hero-try-error-toast" onClick={() => setGenerationError(null)}>
+                <span>{generationError}</span>
+              </div>
+            )}
+          </div>
+        )}
+      </section>
+    </div>
   );
 };
 
